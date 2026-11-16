@@ -296,7 +296,7 @@ body.pv-player .stage .timeline,body.pv-player .stage .pbar,body.pv-player .stag
     <div id="bodyEditors"></div>
     <textarea id="bodyText" rows="0" spellcheck="false" style="display:none"></textarea></div>
    <div class="seg"><label>④ 片尾（独立可编辑 · 只朗读这一句）</label><textarea id="closeText" rows="4" spellcheck="false"></textarea></div>
-   <div class="okbar"><b>免责声明（仅页面展示，不朗读、不进字幕、不进视频帧）</b>：内容依据公开信息整理，具体以官方发布为准；仅供参考，不构成投资、医疗或法律建议。</div>
+   <div class="okbar"><b>免责声明（页面与片尾帧展示，不朗读、不进口播、不进字幕）</b>：内容依据公开信息整理，具体以官方发布为准；仅供参考，不构成投资、医疗或法律建议。</div>
    <div class="seg"><label>完整拼接预览（只读 · 一句口播 = 一条字幕）</label><div class="fullbox" id="scriptFull"></div></div>
    <div class="row"><button id="btnResetScript">恢复默认四段</button><button id="btnExportScript">⬇ 导出 口播文稿.md</button><span class="mini" id="scriptStat"></span></div>
    <p class="hint">开场 / 窗口说明 / 片尾各自独立编辑；正文 <b>30 条各一个编辑框</b>，改任一条后句子表、卡片、字幕、时间轴按新 hash 重算。<b>封面独立取封面 sheet</b>，改文稿标题不会自动改封面，校验闸会把不一致检出来。</p>
@@ -310,6 +310,16 @@ body.pv-player .stage .timeline,body.pv-player .stage .pbar,body.pv-player .stag
    <div class="row"><label class="lb">尺寸</label><div class="chips" id="cvSizes"></div></div>
    <div class="row"><label class="lb">条目间距</label><div class="chips" id="cvGaps"></div>
     <span class="mini">紧凑 / 标准 / 宽松，真实作用于语义编排列表</span></div>
+   <div class="row"><label class="lb">标题样式</label>
+    <select id="cvItemFont" style="max-width:158px">
+     <option value="wqy">文泉驿微米黑</option><option value="mono">文泉驿等宽</option>
+     <option value="noto">思源黑体 / Noto Sans</option><option value="serif">宋体 / Noto Serif</option></select>
+    <label class="lb" style="width:52px;flex:0 0 52px">字号</label>
+    <input type="number" id="cvItemFs" min="0" max="80" step="1" value="0" style="width:76px">
+    <span class="mini">0 = 跟随语义编排（竖38 / 横34）</span>
+    <label class="opt"><input type="checkbox" id="cvItemAutoColor" checked> 颜色随主题</label>
+    <input type="color" id="cvItemColor" value="#eef4fc" style="width:52px;height:26px;padding:0">
+    <label class="opt"><input type="checkbox" id="cvItemBold" checked> 加粗</label></div>
    <div class="row"><label class="lb">条目分隔</label><div class="chips" id="cvSeps"></div>
     <span class="mini">九套方案同时作用于页面预览与服务端出片</span></div>
    <div class="row"><label class="lb">分隔强度</label><input type="range" id="sepStrength" min="40" max="200" value="100" style="width:150px">
@@ -350,7 +360,7 @@ body.pv-player .stage .timeline,body.pv-player .stage .pbar,body.pv-player .stag
    <div class="row"><button id="cdPrev">← 上一张</button><button id="cdNext">下一张 →</button><input type="number" id="cdJump" min="1" max="30" value="1" style="width:70px"><button id="btnJump">跳转</button>
     <button id="btnExportCardCfg">⬇ 导出 video_card_theme.json</button><button id="btnExportCardPng">⬇ 导出当前卡 PNG</button></div>
    <div class="okbar">四要素固定：<b>标题 / 重点句（首行突出） / 内容摘要 / 来源（平台 + 完整地址）</b>。本期 30 张卡共 <b id="srcCount">35</b> 个来源条目，全部带完整 URL；多来源全保留。</div>
-   <p class="hint">字幕为软字幕轨，不烧录进画面；成品的卡片切换与字幕由逐句真实音频时长驱动，页面预览按估算节奏演示。</p>
+   <p class="hint">字幕默认烧录进画面，并按片段逐片替换显示（一片最多 30 字），不再把整句堆在画面里；成品的卡片切换与字幕由逐句真实音频时长驱动。</p>
   </div></section>
 
   <!-- 5 人声 -->
@@ -427,7 +437,7 @@ body.pv-player .stage .timeline,body.pv-player .stage .pbar,body.pv-player .stag
     <div class="fld"><span>描边 / 底色</span><input type="color" id="subOutline" value="#0d1b2a" style="height:38px;padding:2px"></div>
    </div>
    <div class="row" style="margin-top:12px"><button id="btnExportSrtCfg">⬇ 导出字幕配置</button><span class="mini" id="subCfgStat"></span></div>
-   <div class="okbar">一句口播 = 一张资讯卡 = 一条字幕；开场与片尾各 1 条字幕、不生成资讯卡。<b>默认烧录硬字幕</b>：Chrome / 手机播放器直接可见；同时保留 mov_text 软轨与独立 SRT 文件。字幕文本与口播同源，<b>不含序号、不含来源</b>。</div>
+   <div class="okbar">一句口播按 30 字左右切成多条字幕片段，逐片替换显示；开场与片尾各 1 句、不生成资讯卡。<b>默认烧录硬字幕</b>：Chrome / 手机播放器直接可见；同时保留 mov_text 软轨与独立 SRT 文件。字幕文本与口播同源，<b>不含序号、不含来源</b>。</div>
   </div></section>
 
   <!-- 8 锁定与导出 -->
@@ -545,6 +555,39 @@ const THEMES={
  paper:{n:'暖米纸',bg:'#faf5ea',txt:'#2a2118',sub:'#756454',line:'rgba(42,33,24,.13)',card:'rgba(42,33,24,.035)',acc:'#c03a24',dark:false},
  ice:{n:'浅冰蓝',bg:'#f0f6fc',txt:'#12263d',sub:'#5a7390',line:'rgba(18,38,61,.12)',card:'rgba(18,38,61,.035)',acc:'#c8321f',dark:false}};
 const CV_TPLS={rank:'榜单卡片',list:'极简列表',headline:'报头重点',semantic:'语义编排'};
+const DISCLAIMER='内容依据公开信息整理，具体以官方发布为准；仅供参考，不构成投资、医疗或法律建议。';
+/* 封面资讯标题：四套模板共用一组配置；默认字号与语义编排等权列表一致（竖38/横34）。 */
+const COVER_ITEM_FONTS={wqy:'"WenQuanYi Micro Hei",sans-serif',
+ mono:'"WenQuanYi Micro Hei Mono",ui-monospace,monospace',
+ noto:'"Noto Sans CJK SC","Source Han Sans SC",sans-serif',
+ serif:'"Noto Serif CJK SC","Songti SC",serif'};
+function itemStyleCfg(){return{font:S.cover.itemFont||'wqy',size:+S.cover.itemFs||0,
+ color:S.cover.itemColor||'',auto_color:S.cover.itemAutoColor!==false,bold:S.cover.itemBold!==false};}
+function coverItemStyle(T,u,land){
+ const fam=COVER_ITEM_FONTS[S.cover.itemFont]||COVER_ITEM_FONTS.wqy;
+ const fs=Math.round((+S.cover.itemFs>0?+S.cover.itemFs:(land?34:38))*u);
+ const col=(S.cover.itemAutoColor!==false||!S.cover.itemColor)?T.txt:S.cover.itemColor;
+ const w=S.cover.itemBold!==false?900:700;
+ return {fam:fam,fs:fs,col:col,w:w,font:w+' '+fs+'px '+fam};
+}
+/* 字幕按片段替换显示：一片最多 30 字，后面的片段覆盖前面的，不再整句堆积前四行。 */
+const SUB_CHUNK_MAX=30;
+function subChunks(text){
+ const s=String(text||'').replace(/[\r\n]+/g,'');const out=[];let cur='';
+ for(const ch of s){cur+=ch;
+  if(cur.length>=SUB_CHUNK_MAX||/[。！？；]/.test(ch)){out.push(cur);cur='';}
+  else if(/[，、]/.test(ch)&&cur.length>=SUB_CHUNK_MAX-8){out.push(cur);cur='';}}
+ if(cur)out.push(cur);return out.length?out:[' '];
+}
+function subChunkAt(text,ratio){
+ const cs=subChunks(text),tot=cs.reduce((a,b)=>a+b.length,0)||1,r=Math.max(0,Math.min(1,ratio));
+ let acc=0,idx=cs.length-1,inner=1;
+ for(let i=0;i<cs.length;i++){
+  const s=acc/tot,e=(acc+cs[i].length)/tot;
+  if(r<s+(e-s)*0.999){idx=i;inner=Math.max(0,Math.min(1,(r-s)/(e-s||1)));break;}
+  acc+=cs[i].length;}
+ return {chunks:cs,idx:idx,text:cs[idx],inner:inner,count:cs.length};
+}
 const CD_TPLS={frame_card:'标准卡',frame_minimal:'极简列表',frame_headline:'报头重点'};
 const SIZES={portrait:{n:'竖版 9:16',w:1080,h:1920},landscape:{n:'横版 16:9',w:1920,h:1080}};
 const GAPS={compact:'紧凑',standard:'标准',airy:'宽松'};
@@ -643,13 +686,14 @@ function alignIssueFromOpening(){
  return true;
 }
 const ISSUE_AUTO=autoIssue();
-const STATE_VER='l1-6';
+const STATE_VER='l1-7';
 const DEF={
  source:{type:'snapshot',url:P.source_url,sheetScript:P.sheet_script,sheetCover:P.sheet_cover,onFail:'stop_and_report',msg:''},
  issue:JSON.parse(JSON.stringify(ISSUE_AUTO)),
  script:{opening:openingTemplate(ISSUE_AUTO),windowOn:true,windowText:P.window_statement,
          body:P.news.map(n=>n.title+'。'+String(n.summary).replace(/\n/g,'').replace(/\u3000/g,'')).join('\n\n'),closing:P.close},
  cover:{theme:'deep_blue',tpl:'semantic',size:'portrait',gap:'airy',count:8,sep:'bands',altBands:true,sepStrength:1,sepAccent:false,
+        itemFont:'wqy',itemFs:0,itemColor:'',itemAutoColor:true,itemBold:true,
         wm:{on:false,text:'今日要闻速览 · '+ISSUE_AUTO.date,pos:'bottom_right',alpha:.12},
         title:P.cover_header.title,showTitle:P.cover_header.show_title,
         showDate:P.cover_header.show_date,showIssue:P.cover_header.show_issue},
@@ -675,6 +719,7 @@ try{
    S[k]=Object.assign({},DEF[k],o[k]||{})});
   S.cover.wm=Object.assign({},DEF.cover.wm,(o.cover||{}).wm||{});
   if(o.__ver!==STATE_VER){S.cover.tpl='semantic';
+   ['itemFont','itemFs','itemColor','itemAutoColor','itemBold'].forEach(k=>{if(!(k in (o.cover||{})))S.cover[k]=DEF.cover[k]});
    if(+S.cover.count===10)S.cover.count=8;
    /* 换包后旧状态里残留的默认品牌名升级；用户自定义标题原样保留。
       旧字面量拆分书写，避免源码中出现旧品牌名被发布校验误判为残留。 */
@@ -981,7 +1026,7 @@ function semPalette(T){return {bg:T.bg,fg:T.txt,sub:T.sub,acc:T.acc,line:T.line,
  chip:T.dark?mixHex(T.bg,'#ffffff',.10):mixHex(T.bg,'#000000',.075),
  badgeRed:T.dark?T.acc:mixHex(T.acc,'#000000',.12),
  badgeInk:'#ffffff'}}
-const SEMFONT='"WenQuanYi Micro Hei",sans-serif';
+let SEMFONT='"WenQuanYi Micro Hei",sans-serif';let SEMWEIGHT=800,SEMCOL=null;
 function fitLines(ctx,text,maxW,maxH,base,min,weight,lh){
  let size=Math.round(base),ls=[];
  for(;size>=Math.max(10,Math.round(min));size--){
@@ -1075,8 +1120,8 @@ function drawEqualCover(ctx,co,T,W,H,u,sem,pad,footerH,land,showT,showD,showI,ti
  const SP={compact:[8,10],standard:[11,14],airy:[16,20]};
  let sp=SP[S.cover.gap]||SP.airy,padV=sp[0]*u,gap=sp[1]*u;
  const minPadV=6*u,minGap=8*u;
- const baseFs=(land?34:38)*u,minFs=30*u;
- const measure=sz=>{ctx.font='700 '+Math.round(sz)+'px '+SEMFONT;
+ const _cis=coverItemStyle(T,u,land);let baseFs=_cis.fs;const minFs=30*u;
+ const measure=sz=>{ctx.font=_cis.w+' '+Math.round(sz)+'px '+_cis.fam;
   return items.map(it=>{const ls=wrapText(ctx,it.title||'',innerW,8);
    return {ls:ls,cut:ls.length>0&&/…$/.test(ls[ls.length-1]),
     h:Math.max(64*u,ls.length*sz*1.22)};});};
@@ -1109,8 +1154,8 @@ function drawEqualCover(ctx,co,T,W,H,u,sem,pad,footerH,land,showT,showD,showI,ti
   ctx.font='800 '+Math.round(34*u)+'px ui-monospace,monospace';
   ctx.textAlign='center';ctx.textBaseline='middle';
   ctx.fillText(String(i+1).padStart(2,'0'),bx+numW/2,by+numW/2+.5);
-  ctx.fillStyle=co.fg;ctx.textAlign='left';ctx.textBaseline='top';
-  ctx.font='700 '+Math.round(tsz)+'px '+SEMFONT;
+  ctx.fillStyle=_cis.col;ctx.textAlign='left';ctx.textBaseline='top';
+  ctx.font=_cis.w+' '+Math.round(tsz)+'px '+_cis.fam;
   const ty=y0+(cardH-blocks[i].h)/2;
   blocks[i].ls.forEach((ln,n)=>ctx.fillText(ln,x+txOff,ty+n*tsz*1.22));
   ctx.textBaseline='alphabetic';
@@ -1122,6 +1167,7 @@ function drawEqualCover(ctx,co,T,W,H,u,sem,pad,footerH,land,showT,showD,showI,ti
  window.__coverDraw={count:items.length,cols:cols,rows:rows,cell_h:Math.round(rowH),
   card_h:Math.round(cardH),card_gap:Math.round(gap),card_pad:Math.round(padV),spacing:S.cover.gap,
   title_fs:Math.round(tsz),cut:blocks.some(b=>b.cut),max_h:Math.round(maxBH),
+  item_style:{font:S.cover.itemFont||'wqy',fs:Math.round(tsz),color:_cis.col,bold:_cis.w>=900},
   centered:true,top_gap:Math.round(top-headBottom),
   bottom_gap:Math.round(H-footerH-(top+blockH)),whitespace:Math.round((avail-blockH)/2),
   sep:sepMode(),semantic:true,semantic_mode:'L1',layout:'equal',stats_hidden:true,
@@ -1135,6 +1181,7 @@ function drawSemanticCover(){
  const cv=$('cvCanvas'),T=THEMES[S.cover.theme],sz=SIZES[S.cover.size],land=S.cover.size==='landscape';
  cv.width=sz.w;cv.height=sz.h;
  const ctx=cv.getContext('2d'),W=sz.w,H=sz.h,u=Math.min(W,H)/1080,co=semPalette(T);
+ const _cis=coverItemStyle(T,u,land);SEMFONT=_cis.fam;SEMWEIGHT=_cis.w;SEMCOL=_cis.col;
  ctx.fillStyle=co.bg;ctx.fillRect(0,0,W,H);
  ctx.fillStyle=co.acc;ctx.fillRect(0,0,W,Math.max(3,6*u));
  const sem=buildSemantic(),pad=58*u,footerH=62*u;
@@ -1187,7 +1234,7 @@ function drawSemanticCover(){
  const uniformLines=(items,maxW,fs0,minFs,maxLines,rh)=>{
   const cap=Math.round((rh-14*u)/(maxLines*1.32));
   let fs=Math.max(Math.round(minFs),Math.min(Math.round(fs0),cap));
-  const rows=()=>{ctx.font='800 '+Math.round(fs)+'px '+SEMFONT;
+  const rows=()=>{ctx.font=SEMWEIGHT+' '+Math.round(fs)+'px '+SEMFONT;
    return items.map(it=>wrapText(ctx,it.label||it.title,maxW,99));};
   let rr=rows();
   while(fs>Math.round(minFs)&&rr.some(r=>r.length>maxLines)){fs-=1;rr=rows();}
@@ -1259,7 +1306,7 @@ function drawSemanticCover(){
    cy=e+34*u;
   }
   if(rs.length){
-   const e=listSection('其余要闻 · '+rs.length+' 条',rs,pad+26*u,W-pad-26*u,cy,30*u,22*u,'rest',rh)[0];
+   const e=listSection('其余要闻 · '+rs.length+' 条',rs,pad+26*u,W-pad-26*u,cy,_cis.fs,22*u,'rest',rh)[0];
    boxes.push([pad+26*u,e-rh,W-pad-26*u,e]);
   }
  }else{
@@ -1418,9 +1465,9 @@ function drawCover(){
  const chipBg=T.dark?'#dbe8f8':'#16283f';
  const softInk=T.dark?'#101f33':'#ffffff';
  const numSoft=softInk;
- const baseFs=(land?38:44)*u,minFs=24*u;
+ const _cis=coverItemStyle(T,u,land);const baseFs=_cis.fs,minFs=24*u;
  const measure=fs=>{
-  ctx.font='700 '+Math.round(fs)+'px "WenQuanYi Micro Hei",sans-serif';
+  ctx.font=_cis.w+' '+Math.round(fs)+'px '+_cis.fam;
   return items.map((it,i)=>{const ls=wrapText(ctx,it.title,(S.cover.tpl==='headline'&&i===0)?maxW0:maxW,8);
    const cut=ls.length>0&&/…$/.test(ls[ls.length-1]);
    const th=ls.length*fs*1.18;
@@ -1430,7 +1477,7 @@ function drawCover(){
  let tsz=baseFs,blocks=measure(tsz);
  /* 字号固定：条数少不放大，整块上下留白；只有确实放不下时才缩小字号。 */
  while(tsz>minFs&&!fits(blocks)){tsz-=1;blocks=measure(tsz);}
- ctx.font='700 '+Math.round(tsz)+'px "WenQuanYi Micro Hei",sans-serif';
+ ctx.font=_cis.w+' '+Math.round(tsz)+'px '+_cis.fam;
  const maxBH=Math.max.apply(null,blocks.map(b=>b.h));
  const rowGap=Math.min(wantedGap,Math.max(minGap,cap-maxBH));
  const rowH=maxBH+rowGap,blockH=rows*rowH;
@@ -1489,7 +1536,7 @@ function drawCover(){
    ctx.fillText(String(i+1).padStart(2,'0'),bx+badge/2,by+badge/2+.5);
   }
   const tx=plainNum?x+20*u+70*u:x+txOff;
-  ctx.fillStyle=T.txt;ctx.textAlign='left';ctx.textBaseline='top';
+  ctx.fillStyle=_cis.col;ctx.textAlign='left';ctx.textBaseline='top';
   ctx.font='700 '+Math.round(tsz)+'px "WenQuanYi Micro Hei",sans-serif';
   const textTop=cy+(bh-th)/2;
   blocks[i].ls.forEach((ln,n)=>ctx.fillText(ln,tx,textTop+n*tsz*1.18));
@@ -1498,7 +1545,7 @@ function drawCover(){
 }
 
 /* v12：v11 折行口径 —— 逐单元按真实像素填满，数字/小数/单位不拆、标点不落行首 */
-const FILL_TOK=/[0-9A-Za-z.:/%+\-]+[\u4e00-\u9fff]?|浓雾|大雾|机构|预测|调价|汽油|每升|下调|幅度|窗口|开启|今晚|预警|能见|提示|注意|安全|白天|华北|黄淮|局地|发布|中央|气象|天气|过程|出行|公众|成品|油价|约降|号汽|日期|日起|升降|元升|特强|橙色|地震|应急|响应|上市|预售|品牌|价格|覆盖|乘用|不完全|统计|./gs;
+const FILL_TOK=/[0-9A-Za-z.:/%+\-]+[\u4e00-\u9fff]?|[\s\S]/g;
 const FILL_NOHEAD=new Set('，。、；：？！）】》”’、,.;:!?%)]}>'.split(''));
 function fillWrapText(ctx,text,font,maxW,indent){
  const save=ctx.font;ctx.font=font;
@@ -1683,7 +1730,10 @@ function gates(){
   ['语义块：N 条全部有归属',buildSemantic().count===1+buildSemantic().topic_count+buildSemantic().rest_count],
   ['版式随表格可选列自动切换（等权列表 / 杂志版）',typeof drawEqualCover==='function'&&typeof drawSemanticCover==='function'&&String(drawSemanticCover).indexOf('if(!sem.enabled)')>=0&&String(drawSemanticCover).indexOf("tpl='rank'")<0],
   ['统计条彻底移除且文字块零重叠',String(drawSemanticCover).indexOf('semStats(')<0&&!!window.__coverDraw&&window.__coverDraw.overlap_count===0],
-  ['等权列表隐藏统计条且字号固定',String(drawEqualCover).indexOf('stats_hidden:true')>=0&&String(drawEqualCover).indexOf('baseFs=(land?34:38)')>=0&&String(drawEqualCover).indexOf('SP={compact:[8,10]')>=0]
+  ['等权列表隐藏统计条且字号固定',String(drawEqualCover).indexOf('stats_hidden:true')>=0&&String(drawEqualCover).indexOf('coverItemStyle(T,u,land)')>=0&&String(drawEqualCover).indexOf('SP={compact:[8,10]')>=0],
+  ['四套模板标题样式同源且可设',typeof coverItemStyle==='function'&&!!$('cvItemFont')&&!!$('cvItemFs')&&!!$('cvItemColor')&&String(drawCover).indexOf('coverItemStyle(T,u,land)')>=0],
+  ['字幕按片段替换、不累积前四行',typeof subChunks==='function'&&typeof subChunkAt==='function'&&SUB_CHUNK_MAX===30&&String(drawSubtitleCanvas).indexOf('subChunkAt(text,ratio)')>=0],
+  ['片尾帧含免责声明且无重复条数',!!window.__outroDraw&&window.__outroDraw.disclaimer===DISCLAIMER&&window.__outroDraw.item_count_shown===false&&window.__outroDraw.overlap===0]
  ];
  $('gates').innerHTML=tests.map(([n,ok])=>'<div class="gate '+(ok?'ok':'bad')+'"><b>'+(ok?'✓':'!')+'</b>'+esc(n)+'</div>').join('');
  return tests;
@@ -1778,6 +1828,14 @@ function render(){
  $('sepStrength').oninput=e=>{S.cover.sepStrength=+e.target.value/100;$('sepStrengthV').textContent=S.cover.sepStrength.toFixed(2)+'×';save();drawCover();gates();};
  $('sepAccent').onchange=e=>{S.cover.sepAccent=e.target.checked;save();drawCover();gates();};
  renderCoverCountUI();
+ $('cvItemFont').value=S.cover.itemFont||'wqy';$('cvItemFs').value=+S.cover.itemFs||0;
+ $('cvItemColor').value=S.cover.itemColor||'#eef4fc';$('cvItemAutoColor').checked=S.cover.itemAutoColor!==false;
+ $('cvItemBold').checked=S.cover.itemBold!==false;
+ const itemSync=()=>{S.cover.itemFont=$('cvItemFont').value;S.cover.itemFs=+$('cvItemFs').value||0;
+  S.cover.itemColor=$('cvItemColor').value;S.cover.itemAutoColor=$('cvItemAutoColor').checked;
+  S.cover.itemBold=$('cvItemBold').checked;save();drawCover();gates();};
+ ['cvItemFont','cvItemFs','cvItemColor','cvItemAutoColor','cvItemBold'].forEach(id=>{
+  $(id).onchange=itemSync;$(id).oninput=itemSync;});
  const _sm=buildSemantic();
  $('semHint').innerHTML='语义编排（L1）：素材只来自表格可选列 '+esc(_sm.columns.join(' / '))+
   '。当前 <b>'+(_sm.enabled?'杂志版（已填可选列）':'等权列表（未填可选列）')+'</b>'+
@@ -1841,9 +1899,11 @@ function drawSubtitleCanvas(ctx,W,H,cfg,text,ratio){
  const scale=Math.min(W,H)/1080,fs=Math.max(15,Math.round(+cfg.font_size*scale*1.18));
  const margin=Math.round(W*.045),maxW=W-margin*2;
  const tw=cfg.typewriter&&(S.typewriter.target==='subtitle'||S.typewriter.target==='both');
- const shown=tw?text.slice(0,Math.ceil(text.length*Math.max(0,Math.min(1,ratio)))):String(text);
+ const cw=subChunkAt(text,ratio);
+ const shown=tw?cw.text.slice(0,Math.ceil(cw.text.length*cw.inner)):cw.text;
  ctx.save();ctx.font='700 '+fs+'px "WenQuanYi Micro Hei",sans-serif';
- const lines=wrapText(ctx,shown,maxW,4),lh=fs*1.42;
+ const lines=wrapText(ctx,shown,maxW,2),lh=fs*1.42;
+ window.__subDraw={chunk:cw.idx,chunk_count:cw.count,text:cw.text,lines:lines.length,shown:shown};
  if(!lines.length){ctx.restore();return;}
  const bw=Math.min(maxW,Math.max.apply(null,lines.map(l=>ctx.measureText(l).width))+Math.round(fs*1.2));
  const bh=lines.length*lh+Math.round(fs*.7),bx=(W-bw)/2;
@@ -1872,7 +1932,8 @@ function drawPlayer(){
  const twSub=S.typewriter.on&&(S.typewriter.target==='subtitle'||S.typewriter.target==='both');
  const twFrm=S.typewriter.on&&(S.typewriter.target==='frame'||S.typewriter.target==='both');
  const ratio=(twSub&&durs[i]>0)?Math.max(0,Math.min(1,S.playPos/durs[i])):1;
- sub.textContent=twSub?full.slice(0,Math.ceil(full.length*ratio)):full;
+ const cwDom=subChunkAt(full,ratio);
+ sub.textContent=twSub?cwDom.text.slice(0,Math.ceil(cwDom.text.length*cwDom.inner)):cwDom.text;
  sub.classList.toggle('off',!S.subtitle.on);
  sub.style.fontSize=Math.round(S.subtitle.font_size*0.34)+'px';
  sub.style.color=S.subtitle.color;
@@ -1891,35 +1952,44 @@ function drawPlayer(){
           :'未逐句合成 · 仅画面预览、无音轨（点「逐句合成到人声轨」后才有声音）');
  const ctx=$('plCanvas').getContext('2d');
  const rv=(twFrm&&durs[i]>0)?Math.max(0,Math.min(1,S.playPos/durs[i])):1;
- if(cardIdx===null){
-  const W=540,H=960,T=THEMES[S.cover.theme];
-  ctx.fillStyle=T.bg;ctx.fillRect(0,0,W,H);
-  ctx.fillStyle=T.acc;ctx.fillRect(0,0,W,5);
-  const label=i===0?(S.cover.showTitle?String(S.cover.title||'今日要闻速览'):S.issue.date_line):(i===seg.length-1?'感谢收听 · 下期见':'资讯时间窗口');
-  const sub=(i===0?S.issue.date_line:(i===seg.length-1?S.issue.date_line+' · '+S.issue.issue_no:'昨日 20:00 — 今日 20:00'));
-  ctx.textAlign='left';ctx.textBaseline='alphabetic';
-  ctx.fillStyle=T.sub;ctx.font='22px "WenQuanYi Micro Hei",sans-serif';
-  ctx.fillText('今日要闻速览 · '+S.issue.issue_no,40,86);
-  ctx.fillStyle=T.txt;ctx.font='900 56px "WenQuanYi Micro Hei",sans-serif';
-  const ls=wrapText(ctx,label,460,3);
-  const ly=H*.36;
-  ls.forEach((l,k)=>ctx.fillText(l,40,ly+k*72));
-  ctx.fillStyle=T.acc;ctx.fillRect(40,ly+ls.length*72+18,110,6);
-  ctx.fillStyle=T.sub;ctx.font='24px "WenQuanYi Micro Hei",sans-serif';
-  ctx.fillText(sub,40,ly+ls.length*72+76);
-  /* 信息卡：避免开场/片尾帧只剩一行字、中间大片空白 */
-  const boxY=H*.54,boxH=H*.21;
-  ctx.strokeStyle=T.line;ctx.lineWidth=1;rr(ctx,40,boxY,W-80,boxH,10);ctx.stroke();
-  ctx.textAlign='left';ctx.textBaseline='alphabetic';
-  ctx.fillStyle=T.sub;ctx.font='20px "WenQuanYi Micro Hei",sans-serif';
-  ctx.fillText('资讯窗口',62,boxY+42);
-  ctx.fillStyle=T.txt;ctx.font='bold 25px "WenQuanYi Micro Hei",sans-serif';
-  ctx.fillText('昨日 20:00 — 今日 20:00',62,boxY+82);
-  ctx.fillStyle=T.sub;ctx.font='19px "WenQuanYi Micro Hei",sans-serif';
-  ctx.fillText('本期 '+P.news.length+' 条 · 来源 '+P.news.reduce((a,n)=>a+n.sources.length,0)+' 个',62,boxY+boxH-24);
-  ctx.strokeStyle=T.line;ctx.beginPath();ctx.moveTo(40,H-110);ctx.lineTo(W-40,H-110);ctx.stroke();
-  ctx.fillStyle=T.sub;ctx.font='22px "WenQuanYi Micro Hei",sans-serif';
-  ctx.fillText('资讯窗口 昨日 20:00 — 今日 20:00 · 共 '+P.news.length+' 条',40,H-68);
+  if(cardIdx===null){
+   const W=540,H=960,T=THEMES[S.cover.theme];
+   ctx.fillStyle=T.bg;ctx.fillRect(0,0,W,H);
+   ctx.fillStyle=T.acc;ctx.fillRect(0,0,W,5);
+   const isEnd=i===seg.length-1,isOpen=i===0;
+   const label=isEnd?'感谢收听 · 下期见':(isOpen?(S.cover.showTitle?String(S.cover.title||'今日要闻速览'):S.issue.date_line):'资讯时间窗口');
+   const boxes=[];let y=86;
+   ctx.textAlign='left';ctx.textBaseline='alphabetic';
+   ctx.fillStyle=T.sub;ctx.font='22px "WenQuanYi Micro Hei",sans-serif';
+   ctx.fillText('今日要闻速览 · '+S.issue.issue_no,40,y);boxes.push([40,y-22,300,y+4,'brand']);
+   y=300;
+   ctx.fillStyle=T.txt;ctx.font='900 56px "WenQuanYi Micro Hei",sans-serif';
+   const ls=wrapText(ctx,label,460,2);
+   ls.forEach((l,k)=>{ctx.fillText(l,40,y+k*72);boxes.push([40,y+k*72-56,500,y+k*72+8,'title'+k]);});
+   y+=ls.length*72+18;
+   ctx.fillStyle=T.acc;ctx.fillRect(40,y,110,6);boxes.push([40,y,150,y+6,'bar']);
+   y+=50;
+   ctx.fillStyle=T.sub;ctx.font='24px "WenQuanYi Micro Hei",sans-serif';
+   ctx.fillText(S.issue.date_line,40,y);boxes.push([40,y-24,360,y+4,'date']);y+=46;
+   const boxY=y+18,boxH=118;
+   ctx.strokeStyle=T.line;ctx.lineWidth=1;rr(ctx,40,boxY,W-80,boxH,10);ctx.stroke();
+   ctx.fillStyle=T.sub;ctx.font='20px "WenQuanYi Micro Hei",sans-serif';
+   ctx.fillText('资讯窗口',62,boxY+42);
+   ctx.fillStyle=T.txt;ctx.font='bold 25px "WenQuanYi Micro Hei",sans-serif';
+   ctx.fillText('昨日 20:00 — 今日 20:00',62,boxY+82);
+   boxes.push([62,boxY+22,62+210,boxY+92,'window_box']);
+   ctx.strokeStyle=T.line;ctx.beginPath();ctx.moveTo(40,H-142);ctx.lineTo(W-40,H-142);ctx.stroke();
+   ctx.fillStyle=T.sub;ctx.font='20px "WenQuanYi Micro Hei",sans-serif';
+   const d1='内容依据公开信息整理，具体以官方发布为准；',d2='仅供参考，不构成投资、医疗或法律建议。';
+   ctx.fillText(d1,40,H-104);ctx.fillText(d2,40,H-72);
+   boxes.push([40,H-124,40+ctx.measureText(d1).width,H-104,'disclaimer1']);
+   boxes.push([40,H-92,40+ctx.measureText(d2).width,H-72,'disclaimer2']);
+   let overlap=0;
+   for(let a=0;a<boxes.length;a++)for(let b=a+1;b<boxes.length;b++){
+    const A=boxes[a],B=boxes[b],ox=Math.min(A[2],B[2])-Math.max(A[0],B[0]),oy=Math.min(A[3],B[3])-Math.max(A[1],B[1]);
+    if(ox>6&&oy>6)overlap++;}
+   window.__outroDraw={kind:isEnd?'close':(isOpen?'open':'window'),boxes:boxes,overlap:overlap,
+    disclaimer:DISCLAIMER,item_count_shown:false,window_once:true};
  }else drawCard($('plCanvas'),cardIdx,true,twFrm?rv:1);
  drawSubtitleCanvas(ctx,540,960,Object.assign({},S.subtitle,{typewriter:twSub}),full,ratio);
  /* 骨架只建一次，之后逐帧只改类名与宽度，避免每帧重建 DOM 把拖动事件冲掉 */
@@ -2024,7 +2094,7 @@ $('btnExportSrc').onclick=()=>download('data_source.json',JSON.stringify({
         endpoint:P.voice_endpoint,timeout_s:20,retries:2,upload:null},
  bgm:{file:S.bgm.background,volume:S.bgm.volume},subtitle:subtitleCfg(),typewriter:typewriterCfg(),export_size:exportSize(),export_format:exportFormat(),trigger:triggerCfg(),cover_count:coverCount(),
  issue_mode:S.issueManual?'manual':'auto',
- cover_theme:{theme:S.cover.theme,tpl:S.cover.tpl,size:S.cover.size,gap:S.cover.gap,sep:sepMode(),sep_strength:+S.cover.sepStrength||1,sep_accent:!!S.cover.sepAccent,count:coverCount(),alt_bands:S.cover.altBands!==false,
+ cover_theme:{theme:S.cover.theme,tpl:S.cover.tpl,size:S.cover.size,gap:S.cover.gap,sep:sepMode(),sep_strength:+S.cover.sepStrength||1,sep_accent:!!S.cover.sepAccent,count:coverCount(),alt_bands:S.cover.altBands!==false,item_style:itemStyleCfg(),
               wm:{on:S.cover.wm.on,text:S.cover.wm.text,pos:S.cover.wm.pos,alpha:S.cover.wm.alpha},
               issue:issueCfg(),cover_header:{title:S.cover.title,show_title:S.cover.showTitle,show_date:S.cover.showDate,show_issue:S.cover.showIssue}},
  video_card_theme:{tpl:S.card.tpl,theme:S.card.theme,size:exportSize()},subtitle:subtitleCfg(),typewriter:typewriterCfg(),export_size:exportSize(),trigger:triggerCfg(),
@@ -2094,7 +2164,7 @@ $('cvCount').oninput=()=>{const v=parseInt($('cvCount').value,10);
   $('wmAlphaV').textContent=S.cover.wm.alpha.toFixed(2);setPv('cover')};
 });
 $('btnExportCoverCfg').onclick=()=>download('cover_theme.json',JSON.stringify({version:'1.0',
- theme:S.cover.theme,tpl:S.cover.tpl,size:S.cover.size,gap:S.cover.gap,sep:sepMode(),sep_strength:+S.cover.sepStrength||1,sep_accent:!!S.cover.sepAccent,count:coverCount(),alt_bands:S.cover.altBands!==false,
+ theme:S.cover.theme,tpl:S.cover.tpl,size:S.cover.size,gap:S.cover.gap,sep:sepMode(),sep_strength:+S.cover.sepStrength||1,sep_accent:!!S.cover.sepAccent,count:coverCount(),alt_bands:S.cover.altBands!==false,item_style:itemStyleCfg(),
  semantic:{mode:'L1',columns:SEM_COLS.map(x=>x[0]),note:'素材来自表格可选列，未填列不推断'},
  wm:{on:S.cover.wm.on,text:S.cover.wm.text,pos:S.cover.wm.pos,alpha:S.cover.wm.alpha},
  issue:issueCfg(),cover_header:{title:S.cover.title,show_title:S.cover.showTitle,show_date:S.cover.showDate,show_issue:S.cover.showIssue},
@@ -2586,7 +2656,7 @@ $('btnRecordWebM').onclick=async()=>{
  }catch(e){st.innerHTML='<div class="errbar">录制失败：'+esc(e.message)+'。请先「逐句合成到人声轨」，并确认浏览器支持 MediaRecorder。</div>'}
 };
 $('btnLock').onclick=()=>{S.locked=previewHash();$('lockHint').textContent='已锁定 manifest hash '+S.locked+'；此后改动会提示不一致。';save();renderStatus()};
-function manifest(){const seg=segments(),ns=newsStart();return{version:'1.0',source_doc:'今日要闻_'+S.issue.date+'.xlsx',source_url:P.source_url,sheet_script:S.source.sheetScript,sheet_cover:S.source.sheetCover,news_window:windowCfg(),issue:issueCfg(),trigger:triggerCfg(),script_hash:scriptHash(),preview_hash:previewHash(),locked_hash:S.locked,cover_count:coverCount(),export_size:exportSize(),export_format:exportFormat(),script_parts:{opening:S.script.opening,window_note:S.script.windowText,spoken:S.script.windowOn,body_segments:bodyItems().length,closing:S.script.closing},segments:seg.map((t,i)=>({idx:i,type:i===0?'open':(S.script.windowOn&&i===1?'window':(i===seg.length-1?'close':'news')),text:t,card_id:(i>=ns&&i<ns+P.news.length)?(i-ns+1):null,srt:true})),cards:P.news.map((n,i)=>({rank:i+1,title:n.title,lead:n.lead||'',summary:n.summary,sources:n.sources})),cover:coverItems().map(c=>({rank:c.rank,label:c.label,title:c.title,sem:c.sem||{}})),semantic:buildSemantic(),config:{issue:issueCfg(),cover:Object.assign({},S.cover,{alt_bands:S.cover.altBands!==false}),card:S.card,voice:voiceCfg(),bgm:bgmCfg(),mix:mixCfg(),subtitle:subtitleCfg(),typewriter:typewriterCfg(),export_size:exportSize()},counts:{segments:seg.length,news_cards:P.news.length,cover_items:coverCount(),subtitles:seg.length,sources:P.news.reduce((a,n)=>a+n.sources.length,0),window_note:S.script.windowOn?1:0},note:'预览零文件产出；锁定后由 Actions 按本 manifest 出片，成品 hash 与预览 hash 不一致须明确提示。'}}
+function manifest(){const seg=segments(),ns=newsStart();return{version:'1.0',source_doc:'今日要闻_'+S.issue.date+'.xlsx',source_url:P.source_url,sheet_script:S.source.sheetScript,sheet_cover:S.source.sheetCover,news_window:windowCfg(),issue:issueCfg(),trigger:triggerCfg(),script_hash:scriptHash(),preview_hash:previewHash(),locked_hash:S.locked,cover_count:coverCount(),export_size:exportSize(),export_format:exportFormat(),script_parts:{opening:S.script.opening,window_note:S.script.windowText,spoken:S.script.windowOn,body_segments:bodyItems().length,closing:S.script.closing},segments:seg.map((t,i)=>({idx:i,type:i===0?'open':(S.script.windowOn&&i===1?'window':(i===seg.length-1?'close':'news')),text:t,card_id:(i>=ns&&i<ns+P.news.length)?(i-ns+1):null,srt:true})),cards:P.news.map((n,i)=>({rank:i+1,title:n.title,lead:n.lead||'',summary:n.summary,sources:n.sources})),cover:coverItems().map(c=>({rank:c.rank,label:c.label,title:c.title,sem:c.sem||{}})),semantic:buildSemantic(),config:{issue:issueCfg(),cover:Object.assign({},S.cover,{alt_bands:S.cover.altBands!==false,item_style:itemStyleCfg()}),card:S.card,voice:voiceCfg(),bgm:bgmCfg(),mix:mixCfg(),subtitle:subtitleCfg(),typewriter:typewriterCfg(),export_size:exportSize()},counts:{segments:seg.length,news_cards:P.news.length,cover_items:coverCount(),subtitles:seg.length,sources:P.news.reduce((a,n)=>a+n.sources.length,0),window_note:S.script.windowOn?1:0},note:'预览零文件产出；锁定后由 Actions 按本 manifest 出片，成品 hash 与预览 hash 不一致须明确提示。'}}
 $('btnExportManifest').onclick=()=>download('render_manifest.json',JSON.stringify(manifest(),null,2),'application/json');
 /* 导出多格式：视频 / 音频 / 字幕 / 图片 / 文稿 / 配置，共用下方唯一主按钮。 */
 const EXPORT_FORMATS={mp4:'视频 MP4',webm:'视频 WebM',mp3:'音频 MP3',wav:'音频 WAV',srt:'字幕 SRT',ass:'字幕 ASS',
@@ -2601,16 +2671,20 @@ function buildAss(){
  o+='[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n';
  o+='Style: Default,WenQuanYi Micro Hei,'+fs+','+assColor(C.color)+','+assColor(C.outline_color)+',&H80000000,-1,0,0,0,100,100,0,0,'+(C.background?3:1)+',2,1,'+al+',40,40,60,1\n\n';
  o+='[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n';
- let t=0;
- seg.forEach((txt,i)=>{
-  const d=Math.max(.2,du[i]||3),cs=Math.round(d*100),chars=Array.from(String(txt));
-  let body='';
-  if(TW&&TW.on&&String(TW.target||'').indexOf('subtitle')>=0){
-   const k=Math.max(1,Math.floor(cs/Math.max(1,chars.length)));
-   chars.forEach(ch=>{body+=/\s/.test(ch)?ch:'{\\kf'+k+'}'+ch});
-  }else body=String(txt).replace(/[{}]/g,'');
-  o+='Dialogue: 0,'+assTime(t)+','+assTime(t+d)+',Default,,0,0,0,,'+body+'\n';t+=d;
- });
+  let t=0;
+  seg.forEach((txt,i)=>{
+   const d=Math.max(.2,du[i]||3),cs=subChunks(txt),tot=cs.reduce((a,b)=>a+b.length,0)||1;
+   let acc=0;
+   cs.forEach(chunk=>{
+    const cd=d*chunk.length/tot,ccs=Math.max(1,Math.round(cd*100));
+    let body='';
+    if(TW&&TW.on&&String(TW.target||'').indexOf('subtitle')>=0){
+     const chars=Array.from(chunk),k=Math.max(1,Math.floor(ccs/Math.max(1,chars.length)));
+     chars.forEach(ch=>{body+=/\s/.test(ch)?ch:'{\\kf'+k+'}'+ch});
+    }else body=chunk.replace(/[{}]/g,'');
+    o+='Dialogue: 0,'+assTime(t)+','+assTime(t+cd)+',Default,,0,0,0,,'+body+'\n';
+    t+=cd;acc+=chunk.length;});
+  });
  return o;
 }
 function exportByFormat(f){

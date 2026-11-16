@@ -7,7 +7,7 @@ dry-run 只用于本地冒烟链路，会在状态文件里如实标注，绝不
 在线接口按 POST JSON → GET t/v/r/p → GET text/voice 三种契约顺序兼容，
 错误响应体写进异常，便于定位。
 """
-import os, json, time, subprocess, urllib.request, urllib.parse, urllib.error, hashlib
+import os, json, re, time, subprocess, urllib.request, urllib.parse, urllib.error, hashlib
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
@@ -241,20 +241,52 @@ def build_voice(root, manifest, mode=None):
             'note': '6 路并发 + 本地缓存，不再 33 次串行等待'}
 
 
+SUB_CHUNK_MAX = 30
+
+
+def subtitle_chunks(text):
+    """把一句长口播切成短字幕片段：优先在句末标点切，硬上限 30 字。
+    与页面 subChunks() 同源；后面的片段替换前面的，不再整句堆积。"""
+    s = re.sub(r'[\r\n]+', '', str(text or ''))
+    out, cur = [], ''
+    for ch in s:
+        cur += ch
+        if len(cur) >= SUB_CHUNK_MAX or ch in '。！？；':
+            out.append(cur)
+            cur = ''
+        elif ch in '，、' and len(cur) >= SUB_CHUNK_MAX - 8:
+            out.append(cur)
+            cur = ''
+    if cur:
+        out.append(cur)
+    return out or [' ']
+
+
 def build_srt(root, voice, manifest, path):
     sub = manifest['config']['subtitle']
     if not sub.get('on'):
         return None
-    t, lines = 0.0, []
+
+    def fmt(x):
+        ms = int(round(x * 1000))
+        h, ms = divmod(ms, 3600000)
+        m, ms = divmod(ms, 60000)
+        sec, ms = divmod(ms, 1000)
+        return '%02d:%02d:%02d,%03d' % (h, m, sec, ms)
+
+    t, lines, idx = 0.0, [], 0
     for i, s in enumerate(voice['segments'], 1):
         st, en = t, t + s['dur']
-        t = en
-        def fmt(x):
-            ms = int(round(x * 1000))
-            h, ms = divmod(ms, 3600000); m, ms = divmod(ms, 60000); sec, ms = divmod(ms, 1000)
-            return '%02d:%02d:%02d,%03d' % (h, m, sec, ms)
         text = s['text'] if voice['mode'] != 'upload' else manifest['segments'][i - 1]['text']
-        lines.append('%d\n%s --> %s\n%s\n' % (i, fmt(st), fmt(en), text))
+        chunks = subtitle_chunks(text)
+        tot = sum(len(c) for c in chunks) or 1
+        ct = st
+        for chunk in chunks:
+            cd = s['dur'] * len(chunk) / tot
+            idx += 1
+            lines.append('%d\n%s --> %s\n%s\n' % (idx, fmt(ct), fmt(ct + cd), chunk))
+            ct += cd
+        t = en
     with open(path, 'w', encoding='utf-8') as f:
         f.write('\n'.join(lines))
     return path
@@ -307,16 +339,23 @@ def build_ass(root, voice, manifest, path, W, H):
         st, en = t, t + s['dur']
         t = en
         text = s['text'] if voice['mode'] != 'upload' else manifest['segments'][i]['text']
-        chars = [c for c in str(text) if c not in ('\r', '\n')]
-        if not chars:
-            chars = [' ']
-        total_cs = max(1, int(round(s['dur'] * 100)))
-        # 每字均分厘秒，余数摊到前几个字，保证总和严格等于本句时长
-        alloc = [total_cs // len(chars)] * len(chars)
-        for k in range(total_cs - sum(alloc)):
-            alloc[k % len(chars)] += 1
-        body = ''.join('{\\k%d}%s' % (alloc[j], esc(c)) for j, c in enumerate(chars))
-        lines.append('Dialogue: 0,%s,%s,Default,,0,0,0,,%s' % (ts(st), ts(en), body))
+        chunks = subtitle_chunks(text)
+        tot = sum(len(c) for c in chunks) or 1
+        ct = st
+        for chunk in chunks:
+            dur = s['dur'] * len(chunk) / tot
+            ce = ct + dur
+            chars = [c for c in chunk if c not in ('\r', '\n')]
+            if not chars:
+                chars = [' ']
+            total_cs = max(1, int(round(dur * 100)))
+            # 每字均分厘秒，余数摊到前几个字，保证总和严格等于本片段时长
+            alloc = [total_cs // len(chars)] * len(chars)
+            for k in range(total_cs - sum(alloc)):
+                alloc[k % len(chars)] += 1
+            body = ''.join('{\\k%d}%s' % (alloc[j], esc(c)) for j, c in enumerate(chars))
+            lines.append('Dialogue: 0,%s,%s,Default,,0,0,0,,%s' % (ts(ct), ts(ce), body))
+            ct = ce
     os.makedirs(os.path.dirname(path) or '.', exist_ok=True)
     with open(path, 'w', encoding='utf-8') as f:
         f.write('\n'.join(lines) + '\n')

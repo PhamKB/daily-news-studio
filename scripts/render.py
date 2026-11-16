@@ -35,6 +35,68 @@ CARD_TITLE_LANDSCAPE = 70   # 横版标题放大（原 60）
 CARD_INK_DARK = '#f4f8fd'    # 深主题标题：近白
 CARD_INK_LIGHT = '#0e1724'   # 浅主题标题：中性深墨（浅冰蓝下不再用主题蓝）
 TOKEN_CH = set('0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ.%+-/:_?=&#~@')
+
+# ---- r14：封面资讯标题样式，四套模板共用（字体 / 字号 / 颜色 / 加粗）----
+# 与页面 COVER_ITEM_FONTS 同源；wqy 与 mono 是随包 ttc 的两个真实 face，
+# noto / serif 用系统中文字体，缺失时自动回退 wqy 并在 meta 记录。
+COVER_ITEM_FONT_MAP = {
+    'wqy':   [('assets/fonts/wqy-microhei.ttc', 0), ('/usr/share/fonts/truetype/wqy/wqy-microhei.ttc', 0)],
+    'mono':  [('assets/fonts/wqy-microhei.ttc', 1), ('/usr/share/fonts/truetype/wqy/wqy-microhei.ttc', 1)],
+    'noto':  [('/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc', 0)],
+    'serif': [('/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc', 0)],
+}
+_COVER_FONT_FAMILY = 'wqy'
+_CF_CACHE = {}
+
+
+def set_cover_font(cfg):
+    global _COVER_FONT_FAMILY
+    st = cfg.get('item_style') or {}
+    _COVER_FONT_FAMILY = (st.get('font') or cfg.get('item_font') or
+                          cfg.get('itemFont') or 'wqy')
+
+
+def CF(size, root, bold=False):
+    # 与 F 同签名，但按当前封面标题字族选字体；带缓存。
+    key = (int(size), bool(bold), _COVER_FONT_FAMILY)
+    if key in _CF_CACHE:
+        return _CF_CACHE[key]
+    fam = _COVER_FONT_FAMILY
+    cands = list(COVER_ITEM_FONT_MAP.get(fam) or COVER_ITEM_FONT_MAP['wqy'])
+    cands += [('assets/fonts/wqy-microhei.ttc', 0),
+              ('/usr/share/fonts/truetype/wqy/wqy-microhei.ttc', 0),
+              ('/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc', 0),
+              ('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 0)]
+    f = None
+    for rel, idx in cands:
+        fp = rel if os.path.isabs(rel) else os.path.join(root, rel)
+        if os.path.isfile(fp):
+            try:
+                f = ImageFont.truetype(fp, int(size), index=idx)
+                break
+            except OSError:
+                continue
+    if f is None:
+        f = F(int(size), root, bold)
+    _CF_CACHE[key] = f
+    return f
+
+
+def cover_item_style(cfg, theme, u, size):
+    st = cfg.get('item_style') or {}
+    raw = st.get('size', cfg.get('item_fs', cfg.get('itemFs', 0)))
+    try:
+        base = float(raw)
+    except (TypeError, ValueError):
+        base = 0.0
+    if base <= 0:
+        base = 34.0 if size == 'landscape' else 38.0
+    color = (st.get('color') or cfg.get('item_color') or
+             cfg.get('itemColor') or '')
+    auto = st.get('auto_color', cfg.get('item_auto_color', cfg.get('itemAutoColor', True)))
+    col = rgb(color) if (color and not auto) else rgb(theme['txt'])
+    bold = bool(st.get('bold', cfg.get('item_bold', cfg.get('itemBold', True))))
+    return _COVER_FONT_FAMILY, base * u, col, bold, base
 # 来源行里的 URL 整段作为不可断原子；末尾遇到中文标点即止。
 URL_RE = re.compile(r'https?://[^\s，。；：、）】》」』]+')
 URL_HEAD = re.compile(r'(https?://[^/?#]+)(.*)$', re.S)
@@ -96,19 +158,15 @@ CARD_DATE_Y_P, CARD_DATE_Y_L = 262, 226
 CARD_SRC_GAP_P, CARD_SRC_GAP_L = 96, 72
 CARD_BG_ENABLED = False
 
-_FILL_PAIR = ['浓雾','大雾','机构','预测','调价','汽油','每升','下调','幅度','窗口',
-              '开启','今晚','预警','能见','提示','注意','安全','白天','华北','黄淮',
-              '局地','发布','中央','气象','天气','过程','出行','公众','成品','油价',
-              '约降','号汽','日期','日起','升降','元升','特强','橙色','地震','应急',
-              '响应','上市','预售','品牌','价格','覆盖','乘用','不完全','统计']
-_FILL_TOK = re.compile(r'[0-9A-Za-z.:/%+\-]+[\u4e00-\u9fff]?|' +
-                       '|'.join(map(re.escape, sorted(set(_FILL_PAIR), key=len, reverse=True))) + r'|.', re.S)
+# r14：折行只保留「数字/小数/单位」原子 + 单字，删除词组表。
+# 词组整块保护会把放不下的词整体推到下一行，右侧留一大片空白（用户反复指出的提前换行）。
+_FILL_TOK = re.compile(r'[0-9A-Za-z.:/%+\-]+[\u4e00-\u9fff]?|.', re.S)
 _FILL_NOHEAD = set('，。、；：？！）】》”’、,.;:!?%)]}>')
 
 
 def fill_wrap(d, text, font, maxw, indent=0):
-    """逐单元按真实像素折行，尽量填满；数字/小数/单位不拆、标点不落行首。
-    返回 [(行, 首行缩进)]。v11 方案图的折行口径，前后端同源。"""
+    """逐字按真实像素折行填满；数字/小数/单位当原子不拆、标点不落行首。
+    返回 [(行, 首行缩进)]。r14 去掉词组保护，右侧不再提前留白。"""
     lines, cur, first = [], '', True
     for tk in _FILL_TOK.findall(str(text)):
         avail = (maxw - indent) if first else maxw
@@ -351,6 +409,7 @@ def txt(draw, xy, s, font, fill, bold=False, anchor=None):
 
 # ------------------------------------------------------------------ 封面
 def render_cover(root, payload, cfg, out_path, meta_path=None):
+    set_cover_font(cfg)
     if cfg.get('tpl') == 'semantic':
         return render_semantic_cover(root, payload, cfg, out_path, meta_path)
     theme = THEMES.get(cfg.get('theme', 'deep_blue'), THEMES['deep_blue'])
@@ -369,6 +428,8 @@ def render_cover(root, payload, cfg, out_path, meta_path=None):
     fg = rgb(theme['txt'])
     sub = rgb(theme['sub'])
     dark = theme['dark']
+    _cis = cover_item_style(cfg, theme, u, size)
+    item_col, item_bold = _cis[2], _cis[3]
 
     # 04 起用反相高对比实色块：深底→浅块深字，浅底→深块白字
     chip_bg = rgb('#dbe8f8') if dark else rgb('#16283f')
@@ -436,7 +497,8 @@ def render_cover(root, payload, cfg, out_path, meta_path=None):
     # 字号固定，不随条数放大：条数少时 cell_h 变大，内容在行内垂直居中，
     # 多出来的高度全部变成行间留白；只在确实放不下时才缩小。
     min_fs = int(24 * u)
-    title_fs = int((44 if size == 'portrait' else 38) * u)
+    # r14：默认与语义编排等权列表一致（竖38 / 横34），可在 03 区灵活设置
+    title_fs = int(_cis[1])
     line_factor = 1.18
     tx_off = int(20 * u) + badge + int(20 * u)
     # 「头条」胶囊只占第一条右上角；其余条用全宽，不再提前折行留出大片空白
@@ -444,7 +506,7 @@ def render_cover(root, payload, cfg, out_path, meta_path=None):
     maxw0 = maxw - (int(120 * u) if tpl == 'headline' else 0)
 
     def _measure(fs):
-        f = F(fs, root, True)
+        f = CF(fs, root)
         out = []
         for idx, it in enumerate(items):
             mw = maxw0 if (tpl == 'headline' and idx == 0) else maxw
@@ -530,7 +592,7 @@ def render_cover(root, payload, cfg, out_path, meta_path=None):
         tx = x0 + (int(20 * u) + int(70 * u) if plain_num else tx_off)
         ty = cy + (bh - th) / 2
         for ln in ls:
-            txt(d, (tx, ty), ln, tf, fg, True)
+            txt(d, (tx, ty), ln, tf, item_col, item_bold)
             ty += int(title_fs * line_factor)
 
     # 水印：只画在底部预留区或内容之下，不压正文
@@ -565,6 +627,8 @@ def render_cover(root, payload, cfg, out_path, meta_path=None):
             'bottom_gap': round(H - bottom_pad - (top + block_h), 2),
             'whitespace': round((avail - block_h) / 2, 2),
             'fixed_font': True, 'label_chip': False, 'divider': tpl != 'list',
+            'item_style': {'font': _cis[0], 'fs': title_fs, 'color': list(item_col), 'bold': item_bold,
+                           'base_px': _cis[4], 'font_fallback': _cis[0] != _COVER_FONT_FAMILY},
             'sep': sep_mode, 'row_gap': row_gap,
             'alternate_bands': sep_mode == 'bands', 'template_structure': tpl}
     if meta_path:
@@ -889,6 +953,7 @@ def _wrapped(d, text, font, maxw, maxlines):
 
 
 def _render_equal_cover(root, payload, cfg, out_path, meta_path, sem):
+    set_cover_font(cfg)
     """等权列表：表格未填可选列时使用。N 条一视同仁、整组上下居中、字号固定不放大；
     条目靠交替淡底与横向细线区分，不显示统计条，不设独立头条卡。"""
     theme = THEMES.get(cfg.get('theme', 'deep_blue'), THEMES['deep_blue'])
@@ -902,6 +967,8 @@ def _render_equal_cover(root, payload, cfg, out_path, meta_path, sem):
     n = sem['count']
     items = (payload.get('cover') or [])[:n]
     land = size == 'landscape'
+    _cis = cover_item_style(cfg, theme, u, size)
+    item_col, item_bold = _cis[2], _cis[3]
     pad = 58 * u
     footer_h = 52 * u
     im = Image.new('RGB', (W, H), co['bg'])
@@ -950,11 +1017,11 @@ def _render_equal_cover(root, payload, cfg, out_path, meta_path, sem):
     pad_v, gap = SPACING.get(cfg.get('gap', 'airy'), SPACING['airy'])
     pad_v, gap = pad_v * u, gap * u
     min_pad_v, min_gap = 6 * u, 8 * u
-    base_fs = (34 if land else 38) * u
+    base_fs = _cis[1]  # r14 与三模板同源，可设
     min_fs = 30 * u
 
     def measure(sz):
-        f = F(sz, root, True)
+        f = CF(sz, root)
         out = []
         for it in items:
             ls = wrap(d, it.get('title') or '', f, innerw)
@@ -1007,10 +1074,10 @@ def _render_equal_cover(root, payload, cfg, out_path, meta_path, sem):
         d.rounded_rectangle([bx, by, bx + numw, by + numw], radius=numw * .21, fill=num_bg)
         txt(d, (bx + numw / 2, by + numw / 2), '%02d' % (i + 1),
             F(34 * u, root, True), num_ink, True, 'mm')
-        f = F(fs, root, True)
+        f = CF(fs, root)
         ty = y0 + (card_h - blocks[i][1]) / 2
         for k, ln in enumerate(blocks[i][0]):
-            txt(d, (x + tx_off, ty + k * fs * 1.22), ln, f, co['fg'], True)
+            txt(d, (x + tx_off, ty + k * fs * 1.22), ln, f, item_col, item_bold)
 
     foot = '%s · %s   %s' % (title, SRC.norm_issue(issue.get('issue_no') or payload.get('issue') or '第01期'),
                              str(issue.get('date') or payload.get('date') or '').replace('-', '.'))
@@ -1052,6 +1119,7 @@ def _render_equal_cover(root, payload, cfg, out_path, meta_path, sem):
             'whitespace': round((avail - block_h) / 2, 2),
             'fixed_font': True, 'label_chip': False, 'divider': True,
             'sep': _sep_mode(cfg), 'font_fs': round(fs, 2), 'stats_hidden': True,
+            'item_style': {'font': _cis[0], 'fs': round(fs, 2), 'color': list(item_col), 'bold': item_bold},
             'hero_value': '', 'topic_count': 0, 'rest_count': n,
             'boards': [], 'enabled': False}
     if meta_path:
@@ -1075,6 +1143,9 @@ def render_semantic_cover(root, payload, cfg, out_path, meta_path=None):
     W, H = SIZES.get(size, SIZES['portrait'])
     u = min(W, H) / 1080.0
     co = _sem_palette(theme)
+    set_cover_font(cfg)
+    _cis = cover_item_style(cfg, theme, u, size)
+    item_col = _cis[2]
     n = cover_count(cfg, payload)
     sem = SRC.build_semantic(payload, n)
     if not sem['enabled']:
@@ -1105,8 +1176,10 @@ def render_semantic_cover(root, payload, cfg, out_path, meta_path=None):
     title = head.get('title', '今日要闻速览')
 
     def T(x, y, s, f, fill, tag, anchor=None, bold=False):
-        """画一行文字并登记真实 bbox。"""
+        """画一行文字并登记真实 bbox；列表文字用可设标题色。"""
         s = str(s)
+        if fill == fg and tag.startswith(('topic', 'rest', 'land')):
+            fill = item_col
         a = anchor or 'la'
         bb = d.textbbox((x, y), s, font=f, anchor=a)
         txt(d, (x, y), s, f, fill, bold, a)
@@ -1131,11 +1204,11 @@ def render_semantic_cover(root, payload, cfg, out_path, meta_path=None):
         行高上限由 rowh 反推，保证两行文字也不越出卡片。"""
         cap = int((rowh - 14 * u) / (max_lines * 1.32))
         fs = max(int(minfs), min(int(fs0), cap))
-        f = F(int(fs), root, True)
+        f = CF(int(fs), root)
         rows = [wrap(d, t, f, maxw) for t in texts]
         while fs > int(minfs) and any(len(r) > max_lines for r in rows):
             fs -= 1
-            f = F(int(fs), root, True)
+            f = CF(int(fs), root)
             rows = [wrap(d, t, f, maxw) for t in texts]
         return f, rows, int(fs)
 
@@ -1293,12 +1366,12 @@ def render_semantic_cover(root, payload, cfg, out_path, meta_path=None):
         if all_items:
             label = '专题 · ' + (sem['topics'][0]['name'] or sem['topics'][0]['id'])
             e, _ = list_section(label, all_items, pad + 26 * u, W - pad - 26 * u,
-                                cy, 30 * u, 22 * u, 'topic', rowh=rh)
+                                cy, _cis[1], 22 * u, 'topic', rowh=rh)
             cy = e + 34 * u
         if rest:
             e, _ = list_section('其余要闻 · %d 条' % len(rest), rest,
                                 pad + 26 * u, W - pad - 26 * u, cy,
-                                30 * u, 22 * u, 'rest', rowh=rh)
+                                _cis[1], 22 * u, 'rest', rowh=rh)
             cy = e
             boxes.append([pad + 26 * u, cy - rh, W - pad - 26 * u, cy])
 
@@ -1399,7 +1472,7 @@ def render_semantic_cover(root, payload, cfg, out_path, meta_path=None):
         fs = min(34 * u, cap)
 
         def all_fit(size):
-            f = F(int(size), root, True)
+            f = CF(int(size), root)
             for arr, a, b in ((all_items, lx0, lx1), (rest, rx0, rx1)):
                 mw = b - (a + 58 * u + 16 * u) - 8 * u
                 for it in arr:
@@ -1415,7 +1488,7 @@ def render_semantic_cover(root, payload, cfg, out_path, meta_path=None):
             T(a, y, name, F(34 * u, root, True), fg, tag + '_head', bold=True)
             textx = a + 58 * u + 16 * u
             maxw = b - textx - 8 * u
-            f = F(int(fs), root, True)
+            f = CF(int(fs), root)
             yy = y + 54 * u
             for k, it in enumerate(arr):
                 h = rh - 6 * u

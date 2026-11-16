@@ -11,6 +11,9 @@ import render as R
 import tts as T
 
 
+DISCLAIMER = '内容依据公开信息整理，具体以官方发布为准；仅供参考，不构成投资、医疗或法律建议。'
+
+
 def _card_header(manifest):
     """卡片报头与封面同文案：中文长日期 + 期号；日期纯文字无底色。"""
     _is = manifest.get('issue') or {}
@@ -121,8 +124,13 @@ def build_audio(root, voice, manifest):
 
 
 # ------------------------------------------------------------------ 帧
-def simple_frame(root, text, size, out, acc_hex='#e6432f', reveal=1.0, theme='deep_blue'):
-    """开场 / 窗口说明 / 片尾帧：按封面主题自动反色，不再写死深底白字。"""
+def simple_frame(root, text, size, out, acc_hex='#e6432f', reveal=1.0, theme='deep_blue',
+                 kind='window', header=None):
+    """开场 / 窗口说明 / 片尾帧：与页面预览同源的顺序行盒。
+
+    r14：去掉「本期 N 条 · 来源 N 个」和重复窗口行；免责声明只在帧上展示两行，
+    不朗读、不进口播、不进字幕。所有文字登记 bbox，做两两相交自检。
+    """
     W, H = R.SIZES[size]
     u = min(W, H) / 1080.0
     th = R.THEMES.get(theme, R.THEMES['deep_blue'])
@@ -133,30 +141,73 @@ def simple_frame(root, text, size, out, acc_hex='#e6432f', reveal=1.0, theme='de
     d = ImageDraw.Draw(im)
     d.rectangle([0, 0, W, max(2, int(6 * u))], fill=acc)
     pad = int(80 * u)
-    R.txt(d, (pad, int(86 * u)), '今日要闻速览', R.F(int(22 * u), root), sub)
-    rv = max(0.0, min(1.0, float(reveal)))
-    shown = text if rv >= 1 else text[:max(0, int(round(len(text) * rv)))]
-    f = R.F(int((56 if size == 'portrait' else 44) * u), root, True)
-    maxw = W - 2 * pad
-    lines = R.wrap(d, shown, f, maxw)
-    y = H * 0.36
+    hdr = header or {}
+    issue = str(hdr.get('issue') or '')
+    # 生产 manifest 的段类型是 opening / closing，帧内统一成 open / close，
+    # 否则开场与片尾都会 fallback 成「资讯时间窗口」（r14 收尾发现的真 bug）。
+    kind_norm = {'opening': 'open', 'closing': 'close', 'end': 'close',
+                 'outro': 'close'}.get(str(kind), str(kind))
+    labels = {'open': str(hdr.get('title') or '今日要闻速览'),
+              'window': '资讯时间窗口', 'close': '感谢收听 · 下期见'}
+    label = labels.get(kind_norm, '资讯时间窗口')
+    boxes = []
+    y = int(172 * u)
+    R.txt(d, (pad, y), '今日要闻速览' + (' · ' + issue if issue else ''),
+          R.F(int(44 * u), root), sub)
+    boxes.append([pad, y - int(44 * u), pad + int(620 * u), y + int(8 * u), 'brand'])
+    y = int(H * (0.30 if size == 'portrait' else 0.26))
+    big = int((112 if size == 'portrait' else 88) * u)
+    f = R.F(big, root, True)
+    lines = R.wrap(d, label, f, W - 2 * pad)[:2]
+    lh = int(big * 1.30)
     for ln in lines:
-        R.txt(d, (pad, y), ln, f, fg, True); y += int(72 * u)
-    d.rectangle([pad, y + int(18 * u), pad + int(110 * u), y + int(24 * u)], fill=acc)
-    # 信息卡：与页面预览同源，避免开场/片尾帧只剩一行字
-    by = int(H * 0.54); bh = int(H * 0.21)
+        R.txt(d, (pad, y), ln, f, fg, True)
+        boxes.append([pad, y - big, W - pad, y + int(8 * u), 'title'])
+        y += lh
+    y += int(36 * u)
+    d.rectangle([pad, y, pad + int(220 * u), y + int(12 * u)], fill=acc)
+    boxes.append([pad, y, pad + int(220 * u), y + int(12 * u), 'bar'])
+    y += int(100 * u)
+    date_s = str(hdr.get('date') or '')
+    if date_s:
+        R.txt(d, (pad, y), date_s, R.F(int(48 * u), root), sub)
+        boxes.append([pad, y - int(48 * u), pad + int(720 * u), y + int(8 * u), 'date'])
+        y += int(92 * u)
+    by = y + int(36 * u)
+    bh = int(H * (0.11 if size == 'portrait' else 0.16))
     d.rounded_rectangle([pad, by, W - pad, by + bh], radius=int(14 * u),
                         outline=line_c, width=1)
-    R.txt(d, (pad + int(22 * u), by + int(42 * u)), '资讯窗口', R.F(int(20 * u), root), sub)
-    R.txt(d, (pad + int(22 * u), by + int(82 * u)), '昨日 20:00 — 今日 20:00',
-          R.F(int(25 * u), root, True), fg)
-    R.txt(d, (pad + int(22 * u), by + bh - int(24 * u)),
-          '以官方发布为准 · 内容依据公开信息整理', R.F(int(19 * u), root), sub)
-    d.line([pad, H - int(110 * u), W - pad, H - int(110 * u)], fill=line_c, width=1)
-    R.txt(d, (pad, H - int(68 * u)), '内容依据公开信息整理 · 以官方发布为准', R.F(int(22 * u), root), fg)
-    R.txt(d, (pad, H - int(36 * u)), '仅供参考 · 不构成投资、医疗或法律建议', R.F(int(19 * u), root), sub)
-    os.makedirs(os.path.dirname(out), exist_ok=True)
+    R.txt(d, (pad + int(44 * u), by + int(84 * u)), '资讯窗口', R.F(int(40 * u), root), sub)
+    R.txt(d, (pad + int(44 * u), by + int(164 * u)), '昨日 20:00 — 今日 20:00',
+          R.F(int(50 * u), root, True), fg)
+    boxes.append([pad + int(44 * u), by + int(44 * u), W - pad - int(44 * u),
+                  by + int(190 * u), 'window_box'])
+    d.line([pad, H - int(284 * u), W - pad, H - int(284 * u)], fill=line_c, width=1)
+    d1 = '内容依据公开信息整理，具体以官方发布为准；'
+    d2 = '仅供参考，不构成投资、医疗或法律建议。'
+    R.txt(d, (pad, H - int(208 * u)), d1, R.F(int(40 * u), root), fg)
+    R.txt(d, (pad, H - int(144 * u)), d2, R.F(int(38 * u), root), sub)
+    boxes.append([pad, H - int(248 * u), W - pad, H - int(198 * u), 'disclaimer1'])
+    boxes.append([pad, H - int(182 * u), W - pad, H - int(134 * u), 'disclaimer2'])
+    overlap = 0
+    for a in range(len(boxes)):
+        for b in range(a + 1, len(boxes)):
+            A, Bx = boxes[a], boxes[b]
+            ox = min(A[2], Bx[2]) - max(A[0], Bx[0])
+            oy = min(A[3], Bx[3]) - max(A[1], Bx[1])
+            if ox > 6 * u and oy > 6 * u:
+                overlap += 1
+    os.makedirs(os.path.dirname(out) or '.', exist_ok=True)
     im.save(out)
+    if kind_norm == 'close':
+        cache = os.path.join(root, '.cache')
+        os.makedirs(cache, exist_ok=True)
+        with open(os.path.join(cache, 'outro_meta_%s.json' % size), 'w',
+                  encoding='utf-8') as mf:
+            json.dump({'kind': kind_norm, 'boxes': boxes, 'overlap': overlap,
+                       'disclaimer': DISCLAIMER, 'item_count_shown': False,
+                       'window_once': True}, mf, ensure_ascii=False, indent=2)
+    return {'kind': kind_norm, 'overlap': overlap, 'boxes': boxes}
 
 
 def tw_targets(tw):
@@ -196,7 +247,8 @@ def frames_for(root, manifest, voice, size, tw):
                     raise RuntimeError('缺少资讯卡片帧：' + src)
                 Image.open(src).save(p)
             else:
-                simple_frame(root, s['text'], size, p, acc_hex, 1.0, theme)
+                simple_frame(root, s['text'], size, p, acc_hex, 1.0, theme,
+                             s.get('kind', 'window'), _hdr)
             out.append((p, du))
             continue
         card = next((c for c in manifest['cards'] if c['index'] == s['card']), None) if s['card'] else None
@@ -207,7 +259,8 @@ def frames_for(root, manifest, voice, size, tw):
             if card:
                 R.render_card(root, card, cfg, p, reveal=ratio)
             else:
-                simple_frame(root, s['text'], size, p, acc_hex, ratio, theme)
+                simple_frame(root, s['text'], size, p, acc_hex, ratio, theme,
+                             s.get('kind', 'window'), _hdr)
             out.append((p, du / steps))
     return out
 
@@ -329,6 +382,8 @@ def produce(root, manifest, voice, card_cfg):
                         'mean_db': round(mean_db(audio), 2)},
               'subtitle_on': bool(sub.get('on')), 'subtitle_burned': bool(sub.get('burn_in')) and bool(srt_path),
               'subtitle_count': len(vsegs) if srt_path else 0,
+              'subtitle_chunk_count': (sum(len(T.subtitle_chunks(x['text'])) for x in vsegs)
+                                       if srt_path else 0),
               'typewriter': bool(tw.get('on')), 'typewriter_target': tw.get('target', 'subtitle'),
               'subtitle_typewriter': bool(ass_path),
               'export_size': size,

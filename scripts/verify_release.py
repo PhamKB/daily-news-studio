@@ -295,7 +295,7 @@ def main():
     ck('等权列表：统计条隐藏、字号固定、整组居中',
        "'stats_hidden': True" in rend and "'fixed_font': True" in rend
        and "'centered': True" in rend and 'stats_hidden:true' in html
-       and 'baseFs=(land?34:38)' in html)
+       and 'coverItemStyle(T,u,land)' in html)
     ck('等权列表：条目卡片化且三档间距真实生效',
        "SPACING = {'compact': (8, 10), 'standard': (11, 14), 'airy': (16, 20)}" in rend
        and 'card_gap' in rend and "'card_gap': round(gap, 2)" in rend
@@ -364,12 +364,18 @@ def main():
        and ds.get('closing') == CLOSING
        and mf['segments'][-1]['text'] == CLOSING
        and '# 片尾（可单独编辑）\n\n' + CLOSING in closing_md)
-    ck('免责声明仅页面展示', '免责声明（仅页面展示' in html
+    ck('免责声明：页面与片尾帧展示，不朗读、不进口播、不进字幕',
+       '免责声明（页面与片尾帧展示' in html
+       and "const DISCLAIMER='内容依据公开信息整理" in html
+       and "DISCLAIMER = '内容依据公开信息整理" in prod
        and '不构成投资' not in data.get('close', '')
        and '不构成投资' not in ds.get('closing', '')
-       and 'disclaimer' in data)
-    ck('开场/片尾帧不再写免责声明',
-       "ctx.fillText('内容依据公开信息整理 · 以官方发布为准'" not in html)
+       and 'disclaimer' in data
+       and "ctx.fillText('内容依据公开信息整理 · 以官方发布为准'" not in html)
+    ck('片尾帧无重复条数与窗口行、免责声明进帧',
+       "item_count_shown:false" in html and 'window_once:true' in html
+       and "ctx.fillText('本期 '+P.news.length" not in html
+       and '免责声明' in prod and "'disclaimer': DISCLAIMER" in prod)
     ck('字幕烧进视频画面', '.sublayer{display:none!important}' in html
        and 'function drawSubtitleCanvas(' in html
        and 'drawSubtitleCanvas(ctx,540,960' in html)
@@ -618,7 +624,7 @@ def main():
     ck('页面默认值与内嵌 payload 已改今日要闻速览',
        'value="今日要闻速览"' in html and '"title": "今日要闻速览"' in html)
     ck('旧浏览器状态自动迁移，换包刷新不会残留旧品牌名',
-       "const STATE_VER='l1-6'" in html and "const OLD_BRAND='每日'+'要闻速览'" in html
+       "const STATE_VER='l1-7'" in html and "const OLD_BRAND='每日'+'要闻速览'" in html
        and "S.cover.title=DEF.cover.title" in html
        and "split(OLD_BRAND).join('今日要闻速览')" in html)
 
@@ -666,6 +672,40 @@ def main():
        and "CARD_LINE2_P, CARD_LINE2_L = 1512, 856" in rend
        and "'content_group_top': True" in rend and "content_group_top:true" in html)
 
+
+    # ---- r14 四项反馈的防回归断言 ----
+    ck('四套封面模板标题字号默认与语义编排一致（竖38 / 横34）',
+       'title_fs = int(_cis[1])' in rend and 'base_fs = _cis[1]' in rend
+       and '(land?34:38)' in html and 'baseFs=(land?38:44)*u' not in html)
+    ck('标题样式控件齐全（字体 / 字号 / 颜色 / 随主题 / 加粗）',
+       all(('id="%s"' % x) in html for x in
+           ('cvItemFont', 'cvItemFs', 'cvItemColor', 'cvItemAutoColor', 'cvItemBold')))
+    ck('标题样式前后端同源且导出配置携带',
+       'function coverItemStyle(' in html and 'def cover_item_style(' in rend
+       and 'def CF(' in rend and 'COVER_ITEM_FONT_MAP' in rend
+       and 'item_style:itemStyleCfg()' in html and 'item_style' in ct)
+    ck('字体映射含随包 ttc 两个真实 face',
+       "'mono':  [('assets/fonts/wqy-microhei.ttc', 1)" in rend)
+    ck('折行去掉词组表、只保留数字单位原子与单字',
+       '_FILL_PAIR' not in rend and '浓雾|大雾|机构' not in html
+       and '_FILL_TOK = re.compile' in rend and 'FILL_TOK=/[0-9A-Za-z' in html)
+    ck('字幕分片函数前后端同源（30 字上限）',
+       'def subtitle_chunks(' in tts_src and 'SUB_CHUNK_MAX = 30' in tts_src
+       and 'function subChunks(' in html and 'SUB_CHUNK_MAX=30' in html
+       and 'function subChunkAt(' in html)
+    ck('SRT / ASS / 页面预览三处按片段替换',
+       'chunks = subtitle_chunks(text)' in tts_src
+       and 'for chunk in chunks:' in tts_src
+       and 'subChunks(txt)' in html and 'subChunkAt(text,ratio)' in html
+       and 'wrapText(ctx,shown,maxW,2)' in html)
+    ck('片尾帧顺序行盒登记 bbox 且做重叠自检',
+       'overlap' in prod and 'outro_meta_' in prod and 'boxes' in prod)
+    ck('生产段 opening/closing 归一化，片尾不 fallback 成窗口说明',
+       "'opening': 'open'" in prod and "'closing': 'close'" in prod
+       and 'kind_norm' in prod and 'labels.get(kind_norm' in prod
+       and "if kind_norm == 'close'" in prod)
+    ck('旧浏览器状态迁移到 l1-7', "const STATE_VER='l1-7'" in html
+       and 'itemFont' in html and "if(o.__ver!==STATE_VER)" in html)
 
     ck('stillimage 调优', "'-tune', 'stillimage'" in prod)
     ck('音频 64k 单声道', "'-b:a', '64k'" in prod and "'-ac', '1'" in prod)

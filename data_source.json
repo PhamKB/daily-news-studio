@@ -17,10 +17,10 @@
     "statement": "今日要闻为昨日 20:00 到今日 20:00 的资讯。"
   },
   "issue": {
-    "date": "2026-11-16",
-    "weekday": "星期一",
-    "date_cn": "2026年11月16日，星期一",
-    "date_line": "2026-11-16 星期一",
+    "date": "2026-11-15",
+    "weekday": "星期日",
+    "date_cn": "2026年11月15日，星期日",
+    "date_line": "2026-11-15 星期日",
     "issue_no": "第01期",
     "notes": ""
   },
@@ -30,7 +30,7 @@
     "show_date": true,
     "show_issue": true
   },
-  "opening": "早上好，今天是2026年11月16日，星期一。以下为今日要闻速览。",
+  "opening": "早上好，今天是2026年11月15日，星期日。以下为今日要闻速览。",
   "closing": "以上是今日要闻速览，感谢收听，下期见。",
   "window_on": true,
   "voice": {
@@ -75,15 +75,15 @@
     "gap": "airy",
     "wm": {
       "on": false,
-      "text": "今日要闻速览 · 2026-11-16",
+      "text": "今日要闻速览 · 2026-11-15",
       "pos": "bottom_right",
       "alpha": 0.12
     },
     "issue": {
-      "date": "2026-11-16",
-      "weekday": "星期一",
-      "date_cn": "2026年11月16日，星期一",
-      "date_line": "2026-11-16 星期一",
+      "date": "2026-11-15",
+      "weekday": "星期日",
+      "date_cn": "2026年11月15日，星期日",
+      "date_line": "2026-11-15 星期日",
       "issue_no": "第01期",
       "notes": ""
     },
@@ -100,7 +100,14 @@
     "alt_bands": true,
     "sep": "bands",
     "sep_strength": 1.0,
-    "sep_accent": false
+    "sep_accent": false,
+    "item_style": {
+      "font": "wqy",
+      "size": 0,
+      "color": "",
+      "auto_color": true,
+      "bold": true
+    }
   },
   "video_card_theme": {
     "tpl": "frame_card",
