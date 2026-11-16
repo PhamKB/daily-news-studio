@@ -598,6 +598,8 @@ def build_outputs(root, p, cfg):
         sub = {'on': True, 'burn_in': True, 'soft_track': True, 'font_size': 44,
                'color': '#FFFFFF', 'outline_color': '#0d1b2a', 'position': 'bottom',
                'background': True, 'font': 'WenQuanYi Micro Hei', 'typewriter': True}
+    # r25：字幕去标题开关写进数据契约，页面导出 manifest 后云端同源生效
+    sub['no_title'] = bool(sub_in.get('no_title', True)) if isinstance(sub_in, dict) else True
     tw_in = cfg.get('typewriter') or {}
     tw = {'on': bool(tw_in.get('on', True)), 'target': tw_in.get('target', 'subtitle'),
           'ms_per_char': int(tw_in.get('ms_per_char', 55)), 'max_steps': int(tw_in.get('max_steps', 8))}
@@ -605,6 +607,16 @@ def build_outputs(root, p, cfg):
     export_size = cfg.get('export_size') or (cv.get('size') if isinstance(cv, dict) else None) or 'portrait'
     if export_size not in ('portrait', 'landscape', 'xhs', 'wechat', 'square'):
         export_size = 'portrait'
+    def _sub_text(s, i):
+        """字幕文本：口播句是 `标题。摘要`，标题已在卡片上，不进字幕、不逐字打出来。
+        只在资讯段剥离首个句号前的标题；开场 / 窗口 / 片尾原样保留。"""
+        k = 'opening' if i == 0 else ('window' if window_on and i == 1 else
+            ('closing' if i == len(segs) - 1 else 'news'))
+        if k != 'news' or not sub.get('no_title', True):
+            return s
+        j = s.find('。')
+        return (s[j + 1:].strip() or s) if 0 < j <= 60 else s
+
     manifest = {
         'version': p['version'],
         'generated_from': 'render_manifest.json（按 render_manifest 出片，不重新取数/编排）',
@@ -616,7 +628,8 @@ def build_outputs(root, p, cfg):
                          'show_title': head.get('show_title', True),
                          'show_date': head.get('show_date', True),
                          'show_issue': head.get('show_issue', True)},
-        'segments': [{'i': i + 1, 'text': s, 'kind': 'opening' if i == 0 else
+        'segments': [{'i': i + 1, 'text': s, 'sub_text': _sub_text(s, i),
+                      'kind': 'opening' if i == 0 else
                       ('window' if window_on and i == 1 else
                        ('closing' if i == len(segs) - 1 else 'news')),
                       'card': (i - (2 if window_on else 1)) if (window_on and i >= 2) or (not window_on and i >= 1) else None}

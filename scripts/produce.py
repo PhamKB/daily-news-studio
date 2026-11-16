@@ -9,6 +9,7 @@ import os, json, re, subprocess, math
 from PIL import Image, ImageDraw, ImageOps
 import render as R
 import tts as T
+import source as SRC
 
 
 DISCLAIMER = '内容依据公开信息整理，具体以官方发布为准；仅供参考，不构成投资、医疗或法律建议。'
@@ -180,14 +181,10 @@ def simple_frame(root, text, size, out, acc_hex='#e6432f', reveal=1.0, theme='de
         y += int(92 * u)
     by = y + int(36 * u)
     bh = int(H * (0.11 if vert else 0.16))
+    # r25：窗口说明句只留报头 + 日期 + 免责声明，不再单独画一页「资讯窗口」信息框。
+    # 片头已改为本期封面，这个框会与片头重复并让用户以为片头没改。
     if kind_norm == 'window':
-        d.rounded_rectangle([pad, by, W - pad, by + bh], radius=int(14 * u),
-                            outline=line_c, width=1)
-        R.txt(d, (pad + int(44 * u), by + int(84 * u)), '资讯窗口', R.F(int(40 * u), root), sub)
-        R.txt(d, (pad + int(44 * u), by + int(164 * u)), '昨日 20:00 — 今日 20:00',
-              R.F(int(50 * u), root, True), fg)
-        boxes.append([pad + int(44 * u), by + int(44 * u), W - pad - int(44 * u),
-                      by + int(190 * u), 'window_box'])
+        d.line([pad, by, W - pad, by], fill=line_c, width=1)
     d.line([pad, H - int(284 * u), W - pad, H - int(284 * u)], fill=line_c, width=1)
     d1 = '内容依据公开信息整理，具体以官方发布为准；'
     d2 = '仅供参考，不构成投资、医疗或法律建议。'
@@ -216,18 +213,67 @@ def simple_frame(root, text, size, out, acc_hex='#e6432f', reveal=1.0, theme='de
     return {'kind': kind_norm, 'overlap': overlap, 'boxes': boxes}
 
 
-def opening_from_cover(root, size, out):
-    """片头用本期封面图，而不是自建的资讯窗口页；封面未生成时回退 simple_frame。"""
+def opening_from_cover(root, size, out, manifest=None):
+    """r25：片头 = 本期封面，绝不再回退到自建的「资讯窗口」信息页。
+
+    上一版的 bug：源码包里 media/ 只有 .gitkeep，云端若封面渲染与出片时序错位，
+    就会静默回退到 simple_frame 画的旧开场页。现在：
+      ① 优先用本次重建刚落盘的 封面_<尺寸>.png，与封面成品逐字节一致；
+      ② 没有就按当期 data.json + cover_theme.json 现场渲染一张，保证片头仍是封面；
+      ③ 现场渲染也失败才返回 False（此时才允许回退帧）。
+    """
+    W, H = R.SIZES[size]
     ename = R.ENAME.get(size, '竖版9比16')
+    im = None
     src = os.path.join(root, 'media', '封面_%s.png' % ename)
     if not os.path.isfile(src):
+        import glob
+        cand = sorted(glob.glob(os.path.join(root, 'media', '封面_*.png')))
+        src = cand[0] if cand else ''
+    if src:
+        try:
+            im = Image.open(src).convert('RGB')
+        except Exception:
+            im = None
+    tmp = out + '.cover.png'
+    if im is None:
+        try:
+            payload = SRC.load_json(os.path.join(root, 'data.json'))
+            cv = dict(SRC.load_json(os.path.join(root, 'cover_theme.json')) or {})
+            cv['size'] = size
+            cv.setdefault('theme', 'deep_blue')
+            cv.setdefault('tpl', 'semantic')
+            cv.setdefault('gap', 'airy')
+            cv.setdefault('wm', {'on': False})
+            m = manifest or {}
+            ci = dict(cv.get('issue') or {})
+            mi = m.get('issue') or {}
+            for k in ('date', 'weekday', 'issue_no'):
+                if mi.get(k):
+                    ci[k] = mi[k]
+            if ci.get('date'):
+                w = ci.get('weekday') or ''
+                ci['date_cn'] = '%s年%s月%s日，%s' % (
+                    ci['date'][:4], int(ci['date'][5:7]), int(ci['date'][8:10]), w)
+                ci['date_line'] = ci['date'] + ' ' + w
+            cv['issue'] = ci
+            cv['cover_header'] = (m.get('cover_header') or payload.get('cover_header')
+                                  or cv.get('cover_header'))
+            R.render_cover(root, payload, cv, tmp)
+            im = Image.open(tmp).convert('RGB')
+        except Exception as e:
+            print('片头现场渲染封面失败：%r' % (e,), flush=True)
+            im = None
+    if im is None:
         return False
-    W, H = R.SIZES[size]
-    im = Image.open(src).convert('RGB')
     if im.size != (W, H):
         im = ImageOps.fit(im, (W, H), method=Image.LANCZOS)
     os.makedirs(os.path.dirname(out) or '.', exist_ok=True)
     im.save(out)
+    try:
+        os.remove(tmp)
+    except OSError:
+        pass
     return True
 
 
@@ -267,7 +313,7 @@ def frames_for(root, manifest, voice, size, tw):
                 if not os.path.isfile(src):
                     raise RuntimeError('缺少资讯卡片帧：' + src)
                 Image.open(src).save(p)
-            elif s['kind'] == 'opening' and opening_from_cover(root, size, p):
+            elif s['kind'] == 'opening' and opening_from_cover(root, size, p, manifest):
                 pass
             else:
                 simple_frame(root, s['text'], size, p, acc_hex, 1.0, theme,
@@ -281,7 +327,7 @@ def frames_for(root, manifest, voice, size, tw):
             ratio = j / steps
             if card:
                 R.render_card(root, card, cfg, p, reveal=ratio)
-            elif s['kind'] == 'opening' and opening_from_cover(root, size, p):
+            elif s['kind'] == 'opening' and opening_from_cover(root, size, p, manifest):
                 pass
             else:
                 simple_frame(root, s['text'], size, p, acc_hex, ratio, theme,

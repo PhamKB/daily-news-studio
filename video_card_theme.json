@@ -9,5 +9,7 @@
     "ms_per_char": 55,
     "max_steps": 8,
     "note": "打字机作用位置可设为字幕 / 视频帧 / 两者；预览同步演示。"
-  }
+  },
+  "category_art": "light",
+  "category_strength": "light"
 }

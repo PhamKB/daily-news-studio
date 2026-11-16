@@ -68,7 +68,8 @@
     "note": "硬字幕 + mov_text 软轨 + 独立 SRT；开启打字机时硬字幕按 ASS 卡拉OK 逐字显现",
     "typewriter": true,
     "background_style": "black",
-    "max_lines": 2
+    "max_lines": 2,
+    "no_title": true
   },
   "cover_theme": {
     "theme": "deep_blue",
@@ -114,7 +115,9 @@
   "video_card_theme": {
     "tpl": "frame_card",
     "theme": "deep_blue",
-    "size": "portrait"
+    "size": "portrait",
+    "category_art": "light",
+    "category_strength": "light"
   },
   "note2": "无渠道 md / 无 SKILL / 无筛选打分 / 无 AI 编排 / 无魔搭密钥：表格已是处理后的数据。",
   "inline_payload": {

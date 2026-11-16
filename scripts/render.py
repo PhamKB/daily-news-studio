@@ -234,6 +234,84 @@ def fill_wrap(d, text, font, maxw, indent=0):
     return [(a, b) for a, b in lines]
 
 
+# r25：分类标签线稿纹样 —— 程序化绘制，无外部图片依赖，前后端同源。
+# 六类关键词映射到六种几何母题；只画低对比度线稿，不压正文。
+CAT_ART_RULES = [
+    ('tech',    ('芯片', '算力', '人工智能', 'AI', '新能源', '科技', '数据', '卫星', '标准')),
+    ('finance', ('股', '美股', '金融', '央行', 'LPR', '外贸', '进博会', '利润', '产业', '成交', '融资', '房价', '房贷')),
+    ('law',     ('司法', '命案', '法院', '宣判', '反诈', '诈骗', '辟谣', '监管', '侵权', '使馆')),
+    ('health',  ('流感', '疾控', '健康', '疫苗', '医疗', '创新药', '医保', '呼吸道')),
+    ('traffic', ('天气', '交通', '大雾', '预警', '地震', '事故', '出行', '降雨', '暴雪')),
+    ('civic',   ('民生', '油价', '成品油', '社保', '最低工资', '基层', '养老', '乡村', '消费', '班列', '治理')),
+]
+CAT_ART_STRENGTH = {'light': 0.20, 'medium': 0.32, 'strong': 0.46}
+
+
+def category_kind(card):
+    lab = str(card.get('label') or '') + str(card.get('title') or '')
+    for kind, keys in CAT_ART_RULES:
+        if any(k in lab for k in keys):
+            return kind
+    return 'civic'
+
+
+def draw_category_art(im, card, theme, strength='light'):
+    """在卡片底图上叠一层分类线稿；失败静默回退纯色，不影响出片。"""
+    try:
+        a = CAT_ART_STRENGTH.get(str(strength), 0.10)
+        base = rgb(theme['bg'])
+        ink = rgb(theme['sub'])
+        col = mix(base, ink, a)
+        W, H = im.size
+        d = ImageDraw.Draw(im)
+        kind = category_kind(card)
+        cx, cy = int(W * 0.78), int(H * 0.66)
+        rr = int(min(W, H) * 0.17)
+        lw = max(2, int(min(W, H) * 0.0028))
+        if kind == 'tech':
+            n = 5
+            step = rr * 2 // n
+            for i in range(n + 1):
+                x = cx - rr + i * step
+                d.line([x, cy - rr, x, cy + rr], fill=col, width=lw)
+                y = cy - rr + i * step
+                d.line([cx - rr, y, cx + rr, y], fill=col, width=lw)
+            d.rectangle([cx - rr // 3, cy - rr // 3, cx + rr // 3, cy + rr // 3],
+                        outline=col, width=lw * 2)
+        elif kind == 'finance':
+            for i in range(5):
+                y = cy - rr + i * rr // 2
+                d.line([cx - rr, y, cx + rr, y], fill=col, width=lw)
+            pts = [(cx - rr + i * rr // 3, cy + rr // 2 - int(rr * v))
+                   for i, v in enumerate((0.1, 0.4, 0.3, 0.75, 0.6, 0.95, 0.8))]
+            d.line(pts, fill=col, width=lw * 2)
+        elif kind == 'law':
+            d.line([cx, cy - rr, cx, cy + rr], fill=col, width=lw * 2)
+            d.line([cx - rr, cy - rr // 2, cx + rr, cy - rr // 2], fill=col, width=lw)
+            for side in (-1, 1):
+                x = cx + side * rr * 0.7
+                d.line([x, cy - rr // 2, x, cy], fill=col, width=lw)
+                d.arc([x - rr // 4, cy, x + rr // 4, cy + rr // 2], 0, 180,
+                      fill=col, width=lw)
+        elif kind == 'health':
+            for i in range(1, 5):
+                r = rr * i // 4
+                d.ellipse([cx - r, cy - r, cx + r, cy + r], outline=col, width=lw)
+        elif kind == 'traffic':
+            for i in range(-3, 4):
+                d.line([cx, cy, cx + i * rr // 3, cy + rr], fill=col, width=lw)
+            for i in range(1, 5):
+                y = cy + rr * i // 5
+                d.line([cx - rr, y, cx + rr, y], fill=col, width=lw)
+        else:
+            for i in range(1, 5):
+                r = rr * i // 4
+                d.arc([cx - r, cy - r, cx + r, cy + r], 20, 340, fill=col, width=lw)
+        return True
+    except Exception:
+        return False
+
+
 def _card_bg(root, card, W, H, theme):
     """原文图片铺底实现保留但由 CARD_BG_ENABLED 关闭；本版起渲染层一律纯色。
     下载失败/无值一律回退纯色，不报错、不占流程。"""
@@ -721,6 +799,9 @@ def render_card(root, card, cfg, out_path, meta_path=None, reveal=1.0):
                   rgb(SUM_COOL_DARK if theme.get('dark') else SUM_COOL_LIGHT), SUM_COOL_MIX)
 
     im = (_card_bg(root, card, W, H, theme) if CARD_BG_ENABLED else None) or Image.new('RGB', (W, H), base)
+    art = cfg.get('category_art') or 'off'
+    if art not in ('off', False, None, ''):
+        draw_category_art(im, card, theme, cfg.get('category_strength', 'light'))
     d = ImageDraw.Draw(im)
     bg_applied = False
     M = int((120 if land else 96) * u); R = W - M; CW = R - M
@@ -857,6 +938,9 @@ def render_card(root, card, cfg, out_path, meta_path=None, reveal=1.0):
         'para_gap': para_gap, 'src_channels_only': True, 'src_has_url': 'http' in src_s,
         'bg_image': str(card.get('bg_image') or ''), 'bg_applied': bg_applied,
         'bg_disabled': not CARD_BG_ENABLED,
+        'category_art': cfg.get('category_art') or 'off',
+        'category_kind': category_kind(card),
+        'category_strength': cfg.get('category_strength', 'light'),
         'title_lines': len(tlines), 'summary_lines': len(slines),
         'sources': 1 if chans else 0, 'src_fs': src_fs,
         'summary_blocks': 1, 'lead_present': False, 'lead_bar': False,

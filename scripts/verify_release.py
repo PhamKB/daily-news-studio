@@ -639,7 +639,7 @@ def main():
     ck('页面默认值与内嵌 payload 已改今日要闻速览',
        'value="今日要闻速览"' in html and '"title": "今日要闻速览"' in html)
     ck('旧浏览器状态自动迁移，换包刷新不会残留旧品牌名',
-       "const STATE_VER='l1-9'" in html and "const OLD_BRAND='每日'+'要闻速览'" in html
+       "const STATE_VER='r25-1'" in html and "const OLD_BRAND='每日'+'要闻速览'" in html
        and "S.cover.title=DEF.cover.title" in html
        and "split(OLD_BRAND).join('今日要闻速览')" in html)
 
@@ -720,7 +720,7 @@ def main():
        "'opening': 'open'" in prod and "'closing': 'close'" in prod
        and 'kind_norm' in prod and 'labels.get(kind_norm' in prod
        and "if kind_norm == 'close'" in prod)
-    ck('旧浏览器状态迁移到 l1-9', "const STATE_VER='l1-9'" in html
+    ck('旧浏览器状态迁移到 r25-1', "const STATE_VER='r25-1'" in html
        and 'itemFont' in html and "if(o.__ver!==STATE_VER)" in html)
 
     ck('stillimage 调优', "'-tune', 'stillimage'" in prod)
@@ -870,7 +870,7 @@ def main():
        and "R.SUBTITLE_SAFE_U = R.subtitle_safe_u(src_cfg.get('subtitle'))" in _dpy)
     ck('服务端字幕样式支持底色与行数',
        "background_style" in prod and "max_lines" in prod and "'navy': '&H8C2A1B0D'" in prod)
-    ck('STATE_VER 升级且旧状态迁移', "const STATE_VER='l1-9'" in html and 'S.shared={theme:' in html)
+    ck('STATE_VER 升级且旧状态迁移', "const STATE_VER='r25-1'" in html and 'S.shared={theme:' in html)
     # ---- r23 防回归 ----
     ck('r23 文稿改标题/删除/调序/条数后封面同源重绘',
        '__ALL_COVER[k].title' in html and 'drawCover();docPreview();' in html
@@ -894,6 +894,34 @@ def main():
        and 'title_lines:1' in html)
     ck('r23 片尾字幕带避开免责声明',
        'window.__cardDrawSubBand=[Math.round(PH*.60),Math.round(PH*.78)]' in html)
+
+
+    # ---- r25 防回归：片头 / 字幕 / 分类纹样 / 可见构建标记 ----
+    ck('r25 片头=本期封面，且不再回退自建资讯窗口页',
+       "os.path.join(root, 'media', '封面_%s.png' % ename)" in prod
+       and 'R.render_cover(root, payload, cv, tmp)' in prod
+       and 'd.rounded_rectangle([pad, by, W - pad, by + bh]' not in prod
+       and prod.count('opening_from_cover(root, size, p, manifest)') == 2)
+    ck('r25 字幕不含资讯标题（页面 / 数据契约 / 出片三处同源）',
+       'function subtitleSegments()' in html and 'function subTextOf(t,idx)' in html
+       and "'sub_text': _sub_text(s, i)" in src
+       and "text = s.get('sub_text') or s['text']" in tts_src
+       and 'no_title:S.subtitle.no_title!==false' in html
+       and "const sub=$('plSub'),full=subtitleSegments()[i]||''" in html)
+    ck('r25 字幕逐句时长按真实音轨 offsets 差分，不再与估算时长错位',
+       'MERGED.offsets.length===seg.length' in html
+       and '(i+1<o.length?o[i+1]:(MERGED.dur||0))-x' in html)
+    ck('r25 分类标签纹样背景前后端同源且可关闭',
+       'CAT_ART_RULES' in rend and 'def draw_category_art(' in rend
+       and 'const CAT_ART_RULES=' in html and 'function drawCategoryArt(' in html
+       and "category_art:'light'" in html
+       and 'drawCategoryArt(ctx,W,H,c,S.card.category_art' in html)
+    ck('r25 页面有可见构建标记，Ctrl+F5 后可确认线上是否已换包',
+       'r25 · 11-16' in html)
+    ck('r25 分类纹样下移到中下部留白区，前后端同源且不再压标题与摘要',
+       'cy=H*.66' in html and 'int(H * 0.66)' in rend
+       and 'Math.min(W,H)*.17' in html and 'int(min(W, H) * 0.17)' in rend
+       and 'cy=H*.30' not in html and 'int(H * 0.30)' not in rend)
 
     bad = [c for c in CHECKS if not c['ok']]
     print('共 %d 项，失败 %d 项' % (len(CHECKS), len(bad)))

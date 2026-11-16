@@ -165,7 +165,8 @@ def _synth_parallel(root, manifest, cfg, segs, outdir, fetcher, tag):
             fetcher(seg['text'], p)
         if not os.path.isfile(p) or os.path.getsize(p) < 512:
             raise VoiceError('%s 第 %d 句输出为空' % (tag, k + 1))
-        return k, {'file': p, 'dur': _probe_dur(p), 'text': seg['text'], 'cached': hit}
+        return k, {'file': p, 'dur': _probe_dur(p), 'text': seg['text'],
+                   'sub_text': seg.get('sub_text') or seg['text'], 'cached': hit}
 
     errors = []
     with ThreadPoolExecutor(max_workers=workers) as ex:
@@ -198,7 +199,8 @@ def build_voice(root, manifest, mode=None):
             raise VoiceError('自定义上传人声不存在：%r' % up)
         src = os.path.join(root, up)
         dur = _probe_dur(src)
-        result = [{'file': src, 'dur': dur, 'text': '（整段上传真人录音）'}]
+        result = [{'file': src, 'dur': dur, 'text': '（整段上传真人录音）',
+                   'sub_text': '（整段上传真人录音）'}]
         return {'mode': 'upload', 'real_voice': True, 'total': dur, 'segments': result}
 
     if mode == 'dry-run':
@@ -207,7 +209,8 @@ def build_voice(root, manifest, mode=None):
             # 冒烟用：每句压到 <=3s，避免把 30 条长稿编成十几分钟视频；真实模式不受影响
             dur = min(3.0, max(1.2, estimate(s['text'])))
             _wav_silence(p, dur)
-            result.append({'file': p, 'dur': dur, 'text': s['text']})
+            result.append({'file': p, 'dur': dur, 'text': s['text'],
+                           'sub_text': s.get('sub_text') or s['text']})
         return {'mode': 'dry-run', 'real_voice': False, 'total': sum(x['dur'] for x in result),
                 'segments': result,
                 'note': '本地静音占位且每句压到<=3s，仅验混音/字幕/封装链路；不是真人声，也不是成品时长'}
@@ -294,7 +297,11 @@ def build_srt(root, voice, manifest, path):
     t, lines, idx = 0.0, [], 0
     for i, s in enumerate(voice['segments'], 1):
         st, en = t, t + s['dur']
-        text = s['text'] if voice['mode'] != 'upload' else manifest['segments'][i - 1]['text']
+        if voice['mode'] != 'upload':
+            text = s.get('sub_text') or s['text']
+        else:
+            m = manifest['segments'][i - 1]
+            text = m.get('sub_text') or m['text']
         chunks = subtitle_chunks(text)
         tot = sum(len(c) for c in chunks) or 1
         ct = st
@@ -358,7 +365,11 @@ def build_ass(root, voice, manifest, path, W, H):
     for i, s in enumerate(voice['segments'], 0):
         st, en = t, t + s['dur']
         t = en
-        text = s['text'] if voice['mode'] != 'upload' else manifest['segments'][i]['text']
+        if voice['mode'] != 'upload':
+            text = s.get('sub_text') or s['text']
+        else:
+            m = manifest['segments'][i]
+            text = m.get('sub_text') or m['text']
         chunks = subtitle_chunks(text)
         tot = sum(len(c) for c in chunks) or 1
         ct = st
