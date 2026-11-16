@@ -1,9 +1,67 @@
 {
-  "ok": false,
+  "ok": true,
   "version": "1.0",
-  "timings": {},
-  "errors": [
-    "首次 Actions 前无成品，手动 Run workflow 后生成"
-  ],
-  "note": "随包占位，不代表云端已重建"
+  "timings": {
+    "fetch_s": 0.0,
+    "build_s": 0.004,
+    "render_cover_s": 0.094,
+    "tts_s": 7.253,
+    "mux_s": 74.47,
+    "total_s": 81.828
+  },
+  "errors": [],
+  "data_origin": "inline_payload（data_source.json 内联数据，来自腾讯文档/本地 xlsx）",
+  "export_size": "portrait",
+  "voice": {
+    "mode": "libretts",
+    "real_voice": true,
+    "total_s": 1273.82
+  },
+  "video": {
+    "ok": true,
+    "real_voice": true,
+    "voice_mode": "libretts",
+    "audio": {
+      "path": "media/今日播报.mp3",
+      "duration": 1273.824,
+      "streams": [
+        "audio"
+      ],
+      "mean_db": -16.4
+    },
+    "subtitle_on": true,
+    "subtitle_burned": true,
+    "subtitle_count": 33,
+    "subtitle_chunk_count": 300,
+    "typewriter": true,
+    "typewriter_target": "subtitle",
+    "subtitle_typewriter": true,
+    "export_size": "portrait",
+    "card_count": 30,
+    "segment_count": 33,
+    "card_overflow": [],
+    "versions": {
+      "portrait": {
+        "duration": 1273.75,
+        "streams": [
+          "video",
+          "audio",
+          "subtitle"
+        ],
+        "video": true,
+        "audio": true,
+        "soft_subtitle": true,
+        "burned_subtitle": true,
+        "size": [
+          1080,
+          1920
+        ],
+        "bytes": 19537194,
+        "path": "media/今日要闻_竖版9比16.mp4"
+      }
+    },
+    "errors": [],
+    "frame_count": 33,
+    "timeline_file": "media/timeline.json"
+  }
 }
