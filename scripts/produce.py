@@ -159,7 +159,11 @@ def simple_frame(root, text, size, out, acc_hex='#e6432f', reveal=1.0, theme='de
     y = int(H * (0.30 if vert else 0.26))
     big = int((112 if vert else 88) * u)
     f = R.F(big, root, True)
-    lines = R.wrap(d, label, f, W - 2 * pad)[:2]
+    # r23：片尾标题按可用宽度自适应字号，保证「感谢收听 · 下期见」一行放下
+    while big > int(52 * u) and d.textlength(label, font=f) > W - 2 * pad:
+        big -= int(2 * u)
+        f = R.F(big, root, True)
+    lines = [label]
     lh = int(big * 1.30)
     for ln in lines:
         R.txt(d, (pad, y), ln, f, fg, True)

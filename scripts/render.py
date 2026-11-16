@@ -831,13 +831,7 @@ def render_card(root, card, cfg, out_path, meta_path=None, reveal=1.0):
         line2 = min(line2, H - int(160 * u))
     d.line([M, line2, R, line2], fill=line_c, width=max(1, int(2 * u)))
 
-    # ---- 字幕安全带：画在横线与来源之间，字幕只占这条带，不再压住来源
-    if safe_u > 0:
-        by0 = line2 + int((24 if land else 32) * u)
-        box = (M, by0, R, by0 + safe_u)
-        d.rectangle(box, outline=line_c, width=max(1, int(2 * u)))
-        d.text((M + int(16 * u), by0 + int(14 * u)), '字幕安全区',
-               font=F(int(20 * u), root), fill=meta_col)
+    # ---- r23：字幕安全带只作布局占位（来源下移、meta 返回带范围），画面不再画框与标识文字
 
     # ---- 来源：只要渠道名，去掉链接与编号，紧跟线2
     chans = [re.sub(r'^[A-Za-z]?\d+\s*[·.、]\s*', '',
@@ -1450,7 +1444,7 @@ def render_semantic_cover(root, payload, cfg, out_path, meta_path=None):
                 all_items.append({'rank': it['rank'],
                                   'label': ' · '.join(x for x in
                                                       ((it.get('org') or ''),
-                                                       (it.get('brief') or it['title'])) if x),
+                                                       (it['title'] or it.get('brief') or '')) if x),
                                   'title': it['title']})
         rest = [{'rank': it['rank'], 'label': it['title'], 'title': it['title']}
                 for it in sem['rest']]
@@ -1561,7 +1555,7 @@ def render_semantic_cover(root, payload, cfg, out_path, meta_path=None):
                 all_items.append({'rank': it['rank'],
                                   'label': ' · '.join(x for x in
                                                       ((it.get('org') or ''),
-                                                       (it.get('brief') or it['title'])) if x),
+                                                       (it['title'] or it.get('brief') or '')) if x),
                                   'title': it['title']})
         rest = [{'rank': it['rank'], 'label': it['title'], 'title': it['title']}
                 for it in sem['rest']]

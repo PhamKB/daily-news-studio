@@ -7,7 +7,7 @@ dry-run 只用于本地冒烟链路，会在状态文件里如实标注，绝不
 在线接口按 POST JSON → GET t/v/r/p → GET text/voice 三种契约顺序兼容，
 错误响应体写进异常，便于定位。
 """
-import os, json, re, time, subprocess, urllib.request, urllib.parse, urllib.error, hashlib
+import os, json, re, time, math, subprocess, urllib.request, urllib.parse, urllib.error, hashlib
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
@@ -242,19 +242,24 @@ def build_voice(root, manifest, mode=None):
 
 
 SUB_CHUNK_MAX = 30
+_ACTIVE_LINES = 2   # r23：由 build_srt / build_ass 按 subtitle.max_lines 设置
 
 
 def subtitle_chunks(text):
-    """把一句长口播切成短字幕片段：优先在句末标点切，硬上限 30 字。
-    与页面 subChunks() 同源；后面的片段替换前面的，不再整句堆积。"""
+    """把一句长口播切成短字幕片段：优先在句末标点切；片段长度随显示行数变化。
+    r23：1 行整句（页面横向滚动）/ 2 行 30 字 / 3 行 45 字，与页面 subChunks() 同源。"""
     s = re.sub(r'[\r\n]+', '', str(text or ''))
+    ml = max(1, min(3, int(_ACTIVE_LINES)))
+    if ml == 1:
+        return [s or ' ']
+    cap = int(round(SUB_CHUNK_MAX * ml / 2))
     out, cur = [], ''
     for ch in s:
         cur += ch
-        if len(cur) >= SUB_CHUNK_MAX or ch in '。！？；':
+        if len(cur) >= cap or ch in '。！？；':
             out.append(cur)
             cur = ''
-        elif ch in '，、' and len(cur) >= SUB_CHUNK_MAX - 8:
+        elif ch in '，、' and len(cur) >= cap - 8:
             out.append(cur)
             cur = ''
     if cur:
@@ -262,10 +267,22 @@ def subtitle_chunks(text):
     return out or [' ']
 
 
+def chunk_lines(text, ml):
+    """r23：ASS WrapStyle=2 不自动折行，按行数硬插换行，行数设置才真正生效。"""
+    s = str(text or '')
+    ml = max(1, min(3, int(ml)))
+    if ml == 1 or len(s) < 4:
+        return s
+    per = max(1, int(math.ceil(len(s) / ml)))
+    return '\n'.join(s[i:i + per] for i in range(0, len(s), per))
+
+
 def build_srt(root, voice, manifest, path):
+    global _ACTIVE_LINES
     sub = manifest['config']['subtitle']
     if not sub.get('on'):
         return None
+    _ACTIVE_LINES = max(1, min(3, int(sub.get('max_lines', 2))))
 
     def fmt(x):
         ms = int(round(x * 1000))
@@ -284,7 +301,8 @@ def build_srt(root, voice, manifest, path):
         for chunk in chunks:
             cd = s['dur'] * len(chunk) / tot
             idx += 1
-            lines.append('%d\n%s --> %s\n%s\n' % (idx, fmt(ct), fmt(ct + cd), chunk))
+            lines.append('%d\n%s --> %s\n%s\n' % (idx, fmt(ct), fmt(ct + cd),
+                                                  chunk_lines(chunk, _ACTIVE_LINES)))
             ct += cd
         t = en
     with open(path, 'w', encoding='utf-8') as f:
@@ -296,7 +314,9 @@ def build_ass(root, voice, manifest, path, W, H):
 
     一句一条 Dialogue，总时长严格等于该句音频时长；软轨与独立 SRT 仍为整句可读文本。
     """
+    global _ACTIVE_LINES
     sub = manifest['config']['subtitle']
+    _ACTIVE_LINES = max(1, min(3, int(sub.get('max_lines', 2))))
     tw = manifest['config'].get('typewriter') or {}
 
     def color(hexs, alpha='00'):
@@ -353,7 +373,10 @@ def build_ass(root, voice, manifest, path, W, H):
             alloc = [total_cs // len(chars)] * len(chars)
             for k in range(total_cs - sum(alloc)):
                 alloc[k % len(chars)] += 1
-            body = ''.join('{\\k%d}%s' % (alloc[j], esc(c)) for j, c in enumerate(chars))
+            per = max(1, int(math.ceil(len(chars) / _ACTIVE_LINES)))
+            body = ''.join(('{\\N}' if j and j % per == 0 else '')
+                           + '{\\k%d}%s' % (alloc[j], esc(c))
+                           for j, c in enumerate(chars))
             lines.append('Dialogue: 0,%s,%s,Default,,0,0,0,,%s' % (ts(ct), ts(ce), body))
             ct = ce
     os.makedirs(os.path.dirname(path) or '.', exist_ok=True)

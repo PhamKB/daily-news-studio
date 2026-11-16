@@ -871,6 +871,29 @@ def main():
     ck('服务端字幕样式支持底色与行数',
        "background_style" in prod and "max_lines" in prod and "'navy': '&H8C2A1B0D'" in prod)
     ck('STATE_VER 升级且旧状态迁移', "const STATE_VER='l1-9'" in html and 'S.shared={theme:' in html)
+    # ---- r23 防回归 ----
+    ck('r23 文稿改标题/删除/调序/条数后封面同源重绘',
+       '__ALL_COVER[k].title' in html and 'drawCover();docPreview();' in html
+       and '封面标题与当前生效文稿同源' in html)
+    ck('r24 语义封面专题行跟随当前文稿标题（前后端同源）',
+       "it.title||it.brief" in html and "it.brief||it.title" not in html
+       and "(it['title'] or it.get('brief') or '')" in rend
+       and "(it.get('brief') or it['title'])" not in rend)
+    ck('r23 画面不再显示字幕安全区标识',
+       "fillText('字幕安全区'" not in html and "'字幕安全区'" not in rend
+       and '字幕占位：' in html)
+    ck('r23 字幕行数真生效（1行滚动 / 2行30字 / 3行45字，前后端同源）',
+       "if(ml===1)return[s||' ']" in html and 'const scroll=(ml===1)' in html
+       and 'shift=Math.max(0,wid-maxW)*cw.inner' in html
+       and 'const cap=Math.round(SUB_CHUNK_MAX*ml/2)' in html
+       and '_ACTIVE_LINES' in tts_src and 'cap = int(round(SUB_CHUNK_MAX * ml / 2))' in tts_src
+       and 'chunk_lines(chunk, _ACTIVE_LINES)' in tts_src and 'j % per == 0' in tts_src)
+    ck('r23 片尾标题一行不换行（前后端同源）',
+       'wrapText(ctx,label,460,2)' not in html and 'while(bigFs>36' in html
+       and 'while big > int(52 * u)' in prod and 'lines = [label]' in prod
+       and 'title_lines:1' in html)
+    ck('r23 片尾字幕带避开免责声明',
+       'window.__cardDrawSubBand=[Math.round(PH*.60),Math.round(PH*.78)]' in html)
 
     bad = [c for c in CHECKS if not c['ok']]
     print('共 %d 项，失败 %d 项' % (len(CHECKS), len(bad)))
