@@ -389,7 +389,8 @@ def main():
        and '免责声明' in prod and "'disclaimer': DISCLAIMER" in prod)
     ck('字幕烧进视频画面', '.sublayer{display:none!important}' in html
        and 'function drawSubtitleCanvas(' in html
-       and 'drawSubtitleCanvas(ctx,540,960' in html)
+               and "drawSubtitleCanvas(ctx,$('plCanvas').width||540" in html
+        and 'band:window.__cardDrawSubBand' in html)
     ck('时间轴可拖动指针定位', all(x in html for x in
        ('id="pbarHead"', 'id="tlHead"', 'function seekToRatio(', 'function bindSeek(',
         'setPointerCapture')))
@@ -638,7 +639,7 @@ def main():
     ck('页面默认值与内嵌 payload 已改今日要闻速览',
        'value="今日要闻速览"' in html and '"title": "今日要闻速览"' in html)
     ck('旧浏览器状态自动迁移，换包刷新不会残留旧品牌名',
-       "const STATE_VER='l1-8'" in html and "const OLD_BRAND='每日'+'要闻速览'" in html
+       "const STATE_VER='l1-9'" in html and "const OLD_BRAND='每日'+'要闻速览'" in html
        and "S.cover.title=DEF.cover.title" in html
        and "split(OLD_BRAND).join('今日要闻速览')" in html)
 
@@ -711,14 +712,15 @@ def main():
        'chunks = subtitle_chunks(text)' in tts_src
        and 'for chunk in chunks:' in tts_src
        and 'subChunks(txt)' in html and 'subChunkAt(text,ratio)' in html
-       and 'wrapText(ctx,shown,maxW,2)' in html)
+               and 'wrapText(ctx,shown,maxW,ml)' in html
+        and 'const ml=Math.max(1,Math.min(3,+cfg.max_lines||2))' in html)
     ck('片尾帧顺序行盒登记 bbox 且做重叠自检',
        'overlap' in prod and 'outro_meta_' in prod and 'boxes' in prod)
     ck('生产段 opening/closing 归一化，片尾不 fallback 成窗口说明',
        "'opening': 'open'" in prod and "'closing': 'close'" in prod
        and 'kind_norm' in prod and 'labels.get(kind_norm' in prod
        and "if kind_norm == 'close'" in prod)
-    ck('旧浏览器状态迁移到 l1-8', "const STATE_VER='l1-8'" in html
+    ck('旧浏览器状态迁移到 l1-9', "const STATE_VER='l1-9'" in html
        and 'itemFont' in html and "if(o.__ver!==STATE_VER)" in html)
 
     ck('stillimage 调优', "'-tune', 'stillimage'" in prod)
@@ -824,6 +826,51 @@ def main():
        and "cfg.get('news_limit')" in _srcpy)
     ck('硬闸不再写死 30 条', 'items.length===30' not in html
        and '正文条数 = 设置的前 N 条' in html)
+
+    prod = open(os.path.join(ROOT, 'scripts', 'produce.py'), encoding='utf-8').read()
+
+    # ---- r22：方案 D 沉浸文稿 / 配置共用 / 导航联动 / 字幕底色行数 / 播放器同源 ----
+    ck('沉浸文稿全宽长卷 DOM 与函数',
+       all(x in html for x in ('id="docImm"', 'id="docList"', 'id="docRail"', 'id="docMini"',
+                               'function renderDoc(', 'function openDoc(', 'function docCommit(',
+                               'function docItems(', 'id="btnDocImm"')))
+    ck('沉浸文稿全文不截断、上下滚动看全貌',
+       '#docScroll{flex:1 1 auto;overflow-y:auto' in html
+       and '.docSummary{font-size:1em' in html and 'overflow:hidden;min-height:3.5em' in html
+       and 'text-overflow' not in html.split('#docImm')[1].split('#docMini')[0])
+    ck('沉浸文稿可调序与只保留前 N 条',
+       all(x in html for x in ('data-a="top"', 'data-a="up"', 'data-a="down"', 'data-a="del"',
+                               "e.altKey&&(e.key==='ArrowUp'||e.key==='ArrowDown')",
+                               "go('docLimit').onchange=e=>{setNewsLimit(e.target.value);")))
+    ck('尺寸/主题配置合并共用一份',
+       'shared:{theme:' in html and 'function syncShared()' in html
+       and 'function setShared(k,v)' in html
+       and "chips($('cvThemes'),THEMES,S.shared.theme,k=>setShared('theme',k))" in html
+       and "chips($('cvSizes'),SIZES,S.shared.size,k=>setShared('size',k))" in html
+       and 'id="cdSharedEcho"' in html and 'id="btnGoCoverCfg"' in html)
+    ck('预览三按钮同步定位右侧工具栏',
+       "const PV_TAB_MAP={cover:'sec-cover',card:'sec-card',player:'sec-sub'}" in html
+       and "S.pv=c.dataset.v;S.tab=PV_TAB_MAP[S.pv]||S.tab" in html)
+    ck('播放器统一走卡片渲染器真实画幅',
+       ' const W=sz.w,H=sz.h;' in html and "if($('plCanvas').width!==_sz.w" in html
+       and "ctx.scale(PW/540,PH/960)" in html
+       and 'band:window.__cardDrawSubBand' in html)
+    ck('字幕底色四选一与显示行数 1/2/3',
+       all(x in html for x in ('id="subLines"', 'value="none"', 'value="navy"', 'value="accent"',
+                               'const SUB_BG=', 'function subMaxLines()', 'function subtitleSafeU()')))
+    ck('字幕配置导出同源',
+       "background_style:S.subtitle.background_style" in html
+       and "max_lines:Math.max(1,Math.min(3,+S.subtitle.max_lines||2))" in html)
+    ck('字幕安全带前后端同源且不压来源',
+       'const subSafeU=subtitleSafeU(),subSafe=Math.min(Math.round(subSafeU*H/1920)' in html
+       and 'safe_u = min(int(SUBTITLE_SAFE_U * H / 1920.0)' in rend
+       and 'srcY=line2+Math.round((land?72:96)*u)+subSafe' in html
+       and 'src_y = line2 + int((CARD_SRC_GAP_L if land else CARD_SRC_GAP_P) * u) + safe_u' in rend
+       and 'def subtitle_safe_u(cfg)' in rend
+       and "R.SUBTITLE_SAFE_U = R.subtitle_safe_u(src_cfg.get('subtitle'))" in _dpy)
+    ck('服务端字幕样式支持底色与行数',
+       "background_style" in prod and "max_lines" in prod and "'navy': '&H8C2A1B0D'" in prod)
+    ck('STATE_VER 升级且旧状态迁移', "const STATE_VER='l1-9'" in html and 'S.shared={theme:' in html)
 
     bad = [c for c in CHECKS if not c['ok']]
     print('共 %d 项，失败 %d 项' % (len(CHECKS), len(bad)))

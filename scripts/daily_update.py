@@ -82,6 +82,8 @@ def main():
         log('数据入口：%s · 口播 %d 条 / 封面 %d 条' % (origin, len(p['news']), len(p['cover'])))
 
         t = time.time()
+        # r22：字幕安全带按字幕配置注入服务端渲染器，页面 / 播放器 / 出片同源
+        R.SUBTITLE_SAFE_U = R.subtitle_safe_u(src_cfg.get('subtitle'))
         manifest = SRC.build_outputs(root, p, src_cfg)
         status['timings']['build_s'] = round(time.time() - t, 3)
         log('数据契约：%d 句 / %d 卡 / %d 来源，硬闸 %d 条' %

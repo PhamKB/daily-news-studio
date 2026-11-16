@@ -170,6 +170,20 @@ CARD_BG_ALPHA_LIGHT = .68
 # 本版起停用原文图片背景：日期下移、来源与线2距离放大；上/下横线位置保持不动
 CARD_DATE_Y_P, CARD_DATE_Y_L = 262, 226
 CARD_SRC_GAP_P, CARD_SRC_GAP_L = 96, 72
+
+# ---- r22：字幕安全带（页面 / 播放器 / 服务端同源；默认 0 保持基准画幅逐像素不变） ----
+SUBTITLE_SAFE_U = 0
+
+
+def subtitle_safe_u(cfg):
+    c = cfg if isinstance(cfg, dict) else {}
+    if not c.get('on') or not c.get('burn_in'):
+        return 0
+    lines = max(1, min(3, int(c.get('max_lines', 2))))
+    fs = int(c.get('font_size', 44))
+    return int(lines * fs * 1.5 + fs * .9)
+
+
 CARD_BG_ENABLED = False
 # r19：短画幅改为「大字优先 + 下横线/来源随内容自适应下移」。
 # 3:4 / 6:7 / 1:1 与 9:16 一样宽，按高度线性缩字号只会看不清；
@@ -770,7 +784,9 @@ def render_card(root, card, cfg, out_path, meta_path=None, reveal=1.0):
     truncated = False
     src_gap_v = int((CARD_SRC_GAP_L if land else CARD_SRC_GAP_P) * u)
     src_lh_v = int((34 if land else 40) * u)
-    max_line2 = H - src_gap_v - src_lh_v - int(CARD_SHORT_BOTTOM_PAD * u)
+    safe_u = min(int(SUBTITLE_SAFE_U * H / 1920.0),
+                 max(0, H - line2_target - src_gap_v - src_lh_v - int(CARD_SHORT_BOTTOM_PAD * u)))
+    max_line2 = H - src_gap_v - src_lh_v - int(CARD_SHORT_BOTTOM_PAD * u) - safe_u
 
     def _need():
         return len(tlines) * tlh + para_gap + len(slines) * blh
@@ -815,6 +831,14 @@ def render_card(root, card, cfg, out_path, meta_path=None, reveal=1.0):
         line2 = min(line2, H - int(160 * u))
     d.line([M, line2, R, line2], fill=line_c, width=max(1, int(2 * u)))
 
+    # ---- 字幕安全带：画在横线与来源之间，字幕只占这条带，不再压住来源
+    if safe_u > 0:
+        by0 = line2 + int((24 if land else 32) * u)
+        box = (M, by0, R, by0 + safe_u)
+        d.rectangle(box, outline=line_c, width=max(1, int(2 * u)))
+        d.text((M + int(16 * u), by0 + int(14 * u)), '字幕安全区',
+               font=F(int(20 * u), root), fill=meta_col)
+
     # ---- 来源：只要渠道名，去掉链接与编号，紧跟线2
     chans = [re.sub(r'^[A-Za-z]?\d+\s*[·.、]\s*', '',
                    str(x.get('platform') or '').strip()).strip()
@@ -822,7 +846,7 @@ def render_card(root, card, cfg, out_path, meta_path=None, reveal=1.0):
     chans = [c for c in chans if c]
     src_s = '来源：' + ' · '.join(chans)
     src_fs = int((28 if land else CARD_SRC_FS) * fs_u)
-    src_y = line2 + int((CARD_SRC_GAP_L if land else CARD_SRC_GAP_P) * u)
+    src_y = line2 + int((CARD_SRC_GAP_L if land else CARD_SRC_GAP_P) * u) + safe_u
     txt(d, (M, src_y), src_s, F(src_fs, root), meta_col, False, 'lm')
     src_end = src_y + int((34 if land else 40) * u)
 
@@ -854,7 +878,10 @@ def render_card(root, card, cfg, out_path, meta_path=None, reveal=1.0):
         'src_gap': src_y - line2, 'summary_bottom': sum_end,
         'src_anchored_bottom': False, 'src_follows_summary': bool(short),
         'content_driven_rule': bool(short), 'src_bottom_pad': H - src_end,
-        'src_line_fs': [src_fs], 'subtitle_reserved': False,
+        'src_line_fs': [src_fs],
+        'subtitle_reserved': safe_u > 0, 'subtitle_safe_u': safe_u,
+        'subtitle_band': [line2 + int((24 if land else 32) * u),
+                          line2 + int((24 if land else 32) * u) + safe_u] if safe_u > 0 else None,
         'title_color': list(title_col), 'date_color': list(meta_col),
         'tag_color': list(meta_col), 'title_fs': title_fs,
         'date_y': date_y, 'date_no_bg': True, 'header_aligned_cover': True,

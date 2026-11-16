@@ -308,13 +308,18 @@ def sub_style(sub, W, H):
     align = {'bottom': 2, 'center': 5, 'top': 8}.get(sub.get('position', 'bottom'), 2)
     fs = int(sub.get('font_size', 44))
     fs = max(16, int(fs * H / 1080.0))
-    border = 3 if sub.get('background', True) else 1
+    style = sub.get('background_style') or ('black' if sub.get('background', True) else 'none')
+    border = 1 if style == 'none' else 3
+    back = {'none': '&H00000000', 'black': '&H80000000',
+            'navy': '&H8C2A1B0D', 'accent': '&H8C2F43E6'}.get(style, '&H80000000')
+    lines = max(1, min(3, int(sub.get('max_lines', 2))))
+    margin_v = int(H * (0.05 + 0.012 * max(0, lines - 1)))
     return ("FontName=%s,FontSize=%d,PrimaryColour=%s,OutlineColour=%s,"
             "BackColour=&H80000000,BorderStyle=%d,Outline=2,Shadow=0,Alignment=%d,MarginV=%d"
             % (sub.get('font', 'WenQuanYi Micro Hei'), fs,
                _ass_color(sub.get('color', '#FFFFFF')),
                _ass_color(sub.get('outline_color', '#0d1b2a')),
-               border, align, int(H * 0.05)))
+               border, align, margin_v).replace('&H80000000', back))
 
 
 # ------------------------------------------------------------------ 视频
