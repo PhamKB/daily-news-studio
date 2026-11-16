@@ -6,7 +6,7 @@
 成品状态由 ffprobe 读真实流判定，不是「文件存在就算有轨」。
 """
 import os, json, re, subprocess, math
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageOps
 import render as R
 import tts as T
 
@@ -132,6 +132,7 @@ def simple_frame(root, text, size, out, acc_hex='#e6432f', reveal=1.0, theme='de
     不朗读、不进口播、不进字幕。所有文字登记 bbox，做两两相交自检。
     """
     W, H = R.SIZES[size]
+    vert = W <= H
     u = min(W, H) / 1080.0
     th = R.THEMES.get(theme, R.THEMES['deep_blue'])
     base = R.rgb(th['bg']); fg = R.rgb(th['txt'])
@@ -155,8 +156,8 @@ def simple_frame(root, text, size, out, acc_hex='#e6432f', reveal=1.0, theme='de
     R.txt(d, (pad, y), '今日要闻速览' + (' · ' + issue if issue else ''),
           R.F(int(44 * u), root), sub)
     boxes.append([pad, y - int(44 * u), pad + int(620 * u), y + int(8 * u), 'brand'])
-    y = int(H * (0.30 if size == 'portrait' else 0.26))
-    big = int((112 if size == 'portrait' else 88) * u)
+    y = int(H * (0.30 if vert else 0.26))
+    big = int((112 if vert else 88) * u)
     f = R.F(big, root, True)
     lines = R.wrap(d, label, f, W - 2 * pad)[:2]
     lh = int(big * 1.30)
@@ -174,14 +175,15 @@ def simple_frame(root, text, size, out, acc_hex='#e6432f', reveal=1.0, theme='de
         boxes.append([pad, y - int(48 * u), pad + int(720 * u), y + int(8 * u), 'date'])
         y += int(92 * u)
     by = y + int(36 * u)
-    bh = int(H * (0.11 if size == 'portrait' else 0.16))
-    d.rounded_rectangle([pad, by, W - pad, by + bh], radius=int(14 * u),
-                        outline=line_c, width=1)
-    R.txt(d, (pad + int(44 * u), by + int(84 * u)), '资讯窗口', R.F(int(40 * u), root), sub)
-    R.txt(d, (pad + int(44 * u), by + int(164 * u)), '昨日 20:00 — 今日 20:00',
-          R.F(int(50 * u), root, True), fg)
-    boxes.append([pad + int(44 * u), by + int(44 * u), W - pad - int(44 * u),
-                  by + int(190 * u), 'window_box'])
+    bh = int(H * (0.11 if vert else 0.16))
+    if kind_norm == 'window':
+        d.rounded_rectangle([pad, by, W - pad, by + bh], radius=int(14 * u),
+                            outline=line_c, width=1)
+        R.txt(d, (pad + int(44 * u), by + int(84 * u)), '资讯窗口', R.F(int(40 * u), root), sub)
+        R.txt(d, (pad + int(44 * u), by + int(164 * u)), '昨日 20:00 — 今日 20:00',
+              R.F(int(50 * u), root, True), fg)
+        boxes.append([pad + int(44 * u), by + int(44 * u), W - pad - int(44 * u),
+                      by + int(190 * u), 'window_box'])
     d.line([pad, H - int(284 * u), W - pad, H - int(284 * u)], fill=line_c, width=1)
     d1 = '内容依据公开信息整理，具体以官方发布为准；'
     d2 = '仅供参考，不构成投资、医疗或法律建议。'
@@ -208,6 +210,21 @@ def simple_frame(root, text, size, out, acc_hex='#e6432f', reveal=1.0, theme='de
                        'disclaimer': DISCLAIMER, 'item_count_shown': False,
                        'window_once': True}, mf, ensure_ascii=False, indent=2)
     return {'kind': kind_norm, 'overlap': overlap, 'boxes': boxes}
+
+
+def opening_from_cover(root, size, out):
+    """片头用本期封面图，而不是自建的资讯窗口页；封面未生成时回退 simple_frame。"""
+    ename = R.ENAME.get(size, '竖版9比16')
+    src = os.path.join(root, 'media', '封面_%s.png' % ename)
+    if not os.path.isfile(src):
+        return False
+    W, H = R.SIZES[size]
+    im = Image.open(src).convert('RGB')
+    if im.size != (W, H):
+        im = ImageOps.fit(im, (W, H), method=Image.LANCZOS)
+    os.makedirs(os.path.dirname(out) or '.', exist_ok=True)
+    im.save(out)
+    return True
 
 
 def tw_targets(tw):
@@ -246,6 +263,8 @@ def frames_for(root, manifest, voice, size, tw):
                 if not os.path.isfile(src):
                     raise RuntimeError('缺少资讯卡片帧：' + src)
                 Image.open(src).save(p)
+            elif s['kind'] == 'opening' and opening_from_cover(root, size, p):
+                pass
             else:
                 simple_frame(root, s['text'], size, p, acc_hex, 1.0, theme,
                              s.get('kind', 'window'), _hdr)
@@ -258,6 +277,8 @@ def frames_for(root, manifest, voice, size, tw):
             ratio = j / steps
             if card:
                 R.render_card(root, card, cfg, p, reveal=ratio)
+            elif s['kind'] == 'opening' and opening_from_cover(root, size, p):
+                pass
             else:
                 simple_frame(root, s['text'], size, p, acc_hex, ratio, theme,
                              s.get('kind', 'window'), _hdr)

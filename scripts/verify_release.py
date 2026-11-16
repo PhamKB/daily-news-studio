@@ -166,7 +166,9 @@ def main():
     ck('打字机契约存在', 'on' in mf['config']['typewriter'])
     ck('打字机默认开启', mf['config']['typewriter'].get('on') is True)
     ck('打字机作用位置合法', mf['config']['typewriter'].get('target') in ('subtitle', 'frame', 'both'))
-    ck('导出尺寸合法', mf.get('export_size') in ('portrait', 'landscape'))
+    ck('导出尺寸合法（五平台）', mf.get('export_size') in
+       ('portrait', 'landscape', 'xhs', 'wechat', 'square'))
+    ck('manifest 五平台尺寸', len(mf.get('sizes', {})) == 5)
     ck('无定时契约', mf['config'].get('trigger', {}).get('mode') == 'workflow_dispatch')
     ds = load('data_source.json')
     ck('资讯窗口声明', ds.get('news_window', {}).get('start') == '昨日 20:00'
@@ -191,7 +193,8 @@ def main():
     ck('字幕已烧录', vs.get('subtitle_burned') is True)
     for k, v in vs.get('versions', {}).items():
         ck(k + ' 视频轨+音轨', v.get('video') and v.get('audio'), v.get('streams'))
-        ck(k + ' 尺寸', v.get('size') in ([1080, 1920], [1920, 1080]), v.get('size'))
+        ck(k + ' 尺寸', v.get('size') in ([1080, 1920], [1920, 1080],
+             [1080, 1440], [1080, 1260], [1080, 1080]), v.get('size'))
         ck(k + ' 体积字段', isinstance(v.get('bytes'), int) and v['bytes'] > 1024, v.get('bytes'))
     ck('字幕条数=句子数', vs.get('subtitle_count') == nseg if vs.get('subtitle_on') else True,
        vs.get('subtitle_count'))
@@ -201,7 +204,8 @@ def main():
        if vs.get('versions') else False)
 
     esz = mf.get('export_size')
-    ename = '竖版9比16' if esz == 'portrait' else '横版16比9'
+    ename = {'portrait': '竖版9比16', 'landscape': '横版16比9',
+             'xhs': '小红书3比4', 'wechat': '视频号6比7', 'square': '方形1比1'}.get(esz, '竖版9比16')
     esz0 = mf.get('export_size')
     meta_path = os.path.join(ROOT, '.cache', 'cover_meta_%s.json' % esz0)
     if os.path.isfile(meta_path):
@@ -217,6 +221,13 @@ def main():
 
     # 三栏工作台 / 逐句音轨 / 封面留白 / 片尾帧 结构性断言
     prod = open(os.path.join(ROOT, 'scripts', 'produce.py'), encoding='utf-8').read()
+    dep = open(os.path.join(ROOT, 'deploy.py'), encoding='utf-8').read()
+    ck('deploy 提交后回读 ref 校验', "head != nc" in dep and "raise RuntimeError('提交后回读不一致" in dep)
+    ck('deploy 自动触发 Actions', "actions/workflows/daily.yml/dispatches" in dep)
+    ck('deploy 提交信息带时间戳', "%Y-%m-%dT%H:%MZ" in dep)
+    ck('片头优先用本期封面图', "opening_from_cover" in prod and "s['kind'] == 'opening'" in prod)
+    ck('五平台尺寸已进页面', all((k + ':{n:') in html
+                              for k in ('xhs', 'wechat', 'square')))
     rend = open(os.path.join(ROOT, 'scripts', 'render.py'), encoding='utf-8').read()
     src = open(os.path.join(ROOT, 'scripts', 'source.py'), encoding='utf-8').read()
     ck('三栏工作台骨架', 'class="workbench"' in html and 'id="propsBody"' in html
@@ -465,10 +476,12 @@ def main():
        and "ctx.drawImage(bgIm" not in html and "crossOrigin='anonymous'" not in html)
     ck('日期下移且上横线位置保持不动（竖262/横226，线1 328/272）',
        "CARD_DATE_Y_P, CARD_DATE_Y_L = 262, 226" in rend
-       and "date_y = int((CARD_DATE_Y_L if land else CARD_DATE_Y_P) * u)" in rend
-       and "dateY=Math.round((land?226:262)*u)" in html
+       and "date_y = card_geom('date_y', W, H)" in rend
+       and "dateY=cg.dateY" in html
        and "CARD_LINE1_P, CARD_LINE1_L = 328, 272" in rend
-       and "Math.round((land?272:328)*u)" in html)
+       and "const line1=cg.line1" in html
+        and "line1 = card_geom('line1', W, H)" in rend
+        and "272 / 1080.0, 328 / 1920.0" in rend)
     ck('来源与下横线距离放大（竖96/横72），线2 位置不变',
        "CARD_SRC_GAP_P, CARD_SRC_GAP_L = 96, 72" in rend
        and "src_y = line2 + int((CARD_SRC_GAP_L if land else CARD_SRC_GAP_P) * u)" in rend
@@ -500,8 +513,9 @@ def main():
        and 'Promise.all(missing.map' in html and 'Promise.all(raw.map' in html)
     ck('等权封面整组居中且每侧留白封顶',
        'const MAX_SIDE=84*u' in html and 'MAX_SIDE = 84 * u' in rend)
-    ck('v12 卡片按短边缩放、正文 42/38、来源不溢出',
-       'Math.min(W,H)/1080' in html and 'u = min(W, H) / 1080.0' in rend
+    ck('v12 卡片整卡等比、正文 42/38、来源不溢出',
+       'const u=H/(land?1080:1920)' in html and 'u = H / (1080.0 if land else 1920.0)' in rend
+       and 'u = H / (1080.0 if is_land(size) else 1920.0)' in rend
        and 'CARD_BODY_P, CARD_BODY_L = 42, 38' in rend
        and 'CARD_SRC_FS = 32' in rend and 'CARD_SRC_FS=32' in html
        and "'overflow': src_end > H" in rend and 'overflow:srcEnd>H' in html
@@ -540,8 +554,8 @@ def main():
            _mix(_hex(sub), _hex(fg), .58), _hex('#8fb2d4' if dark else '#3c5a7d'), .20))
            for bg, fg, sub, dark in _t))
 
-    ck('视频卡前后端均按短边缩放（横屏来源不溢出）',
-       'Math.min(W,H)/1080' in html and 'u = min(W, H) / 1080.0' in rend
+    ck('视频卡前后端均整卡等比（横屏来源不溢出）',
+       'u=H/(W>H?1080:1920)' in html and 'u = H / (1080.0 if land else 1920.0)' in rend
        and 'const scale=Math.min(W,H)/1080' in html
        and (not vs.get('ok') or vs.get('card_overflow') == []))
 
@@ -624,7 +638,7 @@ def main():
     ck('页面默认值与内嵌 payload 已改今日要闻速览',
        'value="今日要闻速览"' in html and '"title": "今日要闻速览"' in html)
     ck('旧浏览器状态自动迁移，换包刷新不会残留旧品牌名',
-       "const STATE_VER='l1-7'" in html and "const OLD_BRAND='每日'+'要闻速览'" in html
+       "const STATE_VER='l1-8'" in html and "const OLD_BRAND='每日'+'要闻速览'" in html
        and "S.cover.title=DEF.cover.title" in html
        and "split(OLD_BRAND).join('今日要闻速览')" in html)
 
@@ -704,11 +718,112 @@ def main():
        "'opening': 'open'" in prod and "'closing': 'close'" in prod
        and 'kind_norm' in prod and 'labels.get(kind_norm' in prod
        and "if kind_norm == 'close'" in prod)
-    ck('旧浏览器状态迁移到 l1-7', "const STATE_VER='l1-7'" in html
+    ck('旧浏览器状态迁移到 l1-8', "const STATE_VER='l1-8'" in html
        and 'itemFont' in html and "if(o.__ver!==STATE_VER)" in html)
 
     ck('stillimage 调优', "'-tune', 'stillimage'" in prod)
     ck('音频 64k 单声道', "'-b:a', '64k'" in prod and "'-ac', '1'" in prod)
+
+    # r16：短画幅整卡等比 —— 真跑渲染器检查文字块两两不相交，
+    # 不再只看「有没有画出画布」（上一版 3:4 / 6:7 / 1:1 全绿却叠字，就是漏了这项）
+    ck('短画幅整卡等比缩放前后端同源',
+       "u = H / (1080.0 if land else 1920.0)" in rend
+       and "u = H / (1080.0 if is_land(size) else 1920.0)" in rend
+       and "const u=H/(land?1080:1920)" in html)
+    try:
+        import importlib.util as _ilu
+        _sp = os.path.join(ROOT, 'scripts', 'render.py')
+        _spec = _ilu.spec_from_file_location('_vr_render_r16', _sp)
+        _R = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_R)
+        _hdr = {'title': '今日要闻速览', 'date': '2026年11月16日 · 星期一',
+                'issue': '第01期', 'show_title': True, 'show_date': True, 'show_issue': True}
+        _cfg0 = dict((mf.get('config') or {}).get('video_card') or {})
+        _c = (mf.get('cards') or [{}])[0]
+        _tmp = os.path.join(ROOT, '.cache', '_r16_boxes')
+        os.makedirs(_tmp, exist_ok=True)
+        _pairs = [('kicker', 'brand'), ('brand', 'date'), ('date', 'line1'),
+                  ('line1', 'title'), ('title', 'summary'), ('summary', 'line2'), ('line2', 'src')]
+        for _sz in ('portrait', 'landscape', 'xhs', 'wechat', 'square'):
+            _mm = _R.render_card(ROOT, _c,
+                                 dict(_cfg0, size=_sz, card_header=_hdr, theme='deep_blue'),
+                                 os.path.join(_tmp, _sz + '.png'))
+            _b = _mm['boxes']
+            _errs = ['%s底> %s顶' % (a, c) for a, c in _pairs
+                     if _b[a][1] > _b[c][0] + 2]
+            if _b['src'][1] > _mm['h'] + 1:
+                _errs.append('来源出画布')
+            ck('文字块不相交 ' + _sz, not _errs, ';'.join(_errs))
+    except Exception as _e:
+        ck('短画幅文字块不相交', False, repr(_e))
+
+    # ---- r19：短画幅大字优先 + 下横线/来源随内容下移（真跑渲染器，不只看源码字符串）----
+    ck('短画幅正文放大与来源内容驱动前后端同源',
+       'CARD_SHORT_FS_BOOST' in rend and 'CARD_SHORT_BOTTOM_PAD' in rend
+       and 'const short=u<1,fsU=short?1.12:u' in html
+       and 'fs_u = max(u, CARD_SHORT_FS_MIN) * CARD_SHORT_FS_BOOST if short else u' in rend
+       and "'src_follows_summary': bool(short)" in rend
+       and 'src_follows_summary:short' in html
+       and 'line2 = min(sum_end + int(CARD_SHORT_LINE_GAP * u), max_line2)' in rend)
+    try:
+        import importlib.util as _ilu3
+        _sp3 = os.path.join(ROOT, 'scripts', 'render.py')
+        _sp3o = _ilu3.spec_from_file_location('_vr_render_r17', _sp3)
+        _R3 = _ilu3.module_from_spec(_sp3o); _sp3o.loader.exec_module(_R3)
+        _hdr3 = {'title': '今日要闻速览', 'date': '2026年11月16日 · 星期一',
+                 'issue': '第01期', 'show_title': True, 'show_date': True, 'show_issue': True}
+        _cfg3 = dict((mf.get('config') or {}).get('video_card') or {})
+        _c3 = (mf.get('cards') or [{}])[0]
+        _tmp3 = os.path.join(ROOT, '.cache', '_r17_boxes'); os.makedirs(_tmp3, exist_ok=True)
+        for _sz3 in ('portrait', 'landscape', 'xhs', 'wechat', 'square'):
+            _m3 = _R3.render_card(ROOT, _c3, dict(_cfg3, size=_sz3, card_header=_hdr3, theme='deep_blue'),
+                                  os.path.join(_tmp3, _sz3 + '.png'))
+            if _sz3 in ('xhs', 'wechat', 'square'):
+                ck('短画幅摘要明显放大 ' + _sz3, _m3['sum_fs'] >= 40, _m3['sum_fs'])
+                ck('短画幅无大块留白 ' + _sz3, _m3['whitespace_below'] <= 160, _m3['whitespace_below'])
+                ck('短画幅横线与来源随内容下移 ' + _sz3,
+                   _m3['content_driven_rule'] and _m3['src_follows_summary']
+                   and 0 <= _m3['line2_y'] - _m3['summary_bottom'] <= 60
+                   and _m3['src_bottom'] <= _m3['h'],
+                   (_m3['line2_y'] - _m3['summary_bottom'], _m3['src_bottom']))
+            else:
+                ck('基准画幅字号未变 ' + _sz3, abs(_m3['fs_scale'] - 1.0) < 1e-9, _m3['fs_scale'])
+                ck('基准画幅横线与来源未变 ' + _sz3,
+                   not _m3['content_driven_rule'] and _m3['line2_y'] in (1512, 856),
+                   _m3['line2_y'])
+            # r18：报头（标题/日期/期号）独立下限，短画幅不再随 u 线性缩到看不清
+            if _sz3 in ('xhs', 'wechat', 'square'):
+                ck('短画幅报头字号可读 ' + _sz3,
+                   _m3['header_fs'][0] >= 42 and _m3['header_fs'][1] >= 26
+                   and _m3['header_fs'][2] >= 25, _m3['header_fs'])
+            else:
+                ck('基准画幅报头字号未变 ' + _sz3,
+                   _m3['header_fs'] == [50, 32, 30], _m3['header_fs'])
+    except Exception as _e3:
+        ck('短画幅字号与留白回归', False, repr(_e3))
+
+    ck('短画幅报头放大且起点上移前后端同源',
+       'CARD_SHORT_HDR_MIN = .84' in rend and 'const hdrU=u<1?Math.max(u,.84):u' in html
+       and 'hdr_u = max(u, CARD_SHORT_HDR_MIN) if short else u' in rend
+       and 'brand_y = int((124 if land else (CARD_SHORT_BRAND_AT if short else 148)) * u)' in rend
+       and 'brandY=Math.round((land?124:(short?136:148))*u)' in html
+       and 'brand_fs = int(CARD_BRAND_FS * hdr_u)' in rend
+       and 'date_fs = int(CARD_DATE_FS * hdr_u)' in rend)
+
+    # ---- r17：文稿删除 / 调序 / 只保留前 N 条 ----
+    ck('文稿可删除 / 上移 / 下移',
+       all(x in html for x in ('function delNews(', 'function moveNews(', 'data-a="del"',
+                               'data-a="up"', 'data-a="down"')))
+    ck('资讯条数可设置且只保留前 N 条',
+       'function setNewsLimit(' in html and 'function applyNewsView(' in html
+       and "chips($('newsLimitChips')" in html and 'newsLimit' in html)
+    _srcpy = open(os.path.join(ROOT, 'scripts', 'source.py'), encoding='utf-8').read()
+    _dpy = open(os.path.join(ROOT, 'scripts', 'daily_update.py'), encoding='utf-8').read()
+    ck('导出 / 编排 / 取数三处 news_limit 同源',
+       'news_limit:S.script.limit' in html and "'news_limit': cfg.get('news_limit')" in _dpy
+       and "cfg.get('news_limit')" in _srcpy)
+    ck('硬闸不再写死 30 条', 'items.length===30' not in html
+       and '正文条数 = 设置的前 N 条' in html)
 
     bad = [c for c in CHECKS if not c['ok']]
     print('共 %d 项，失败 %d 项' % (len(CHECKS), len(bad)))

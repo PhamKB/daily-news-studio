@@ -5,7 +5,7 @@
 用环境变量 GITHUB_TOKEN 传入（deploy.bat 里 set /p 后仅设为当前进程环境变量）。
 只上传白名单文件，排除成品媒体、缓存、旧实现残留与本地验收产物。
 """
-import os, sys, json, base64, urllib.request, urllib.error, argparse
+import os, sys, json, base64, time, urllib.request, urllib.error, argparse
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 EXCLUDE_DIRS = {'.git', '.cache', '__pycache__', '_site', 'build', 'frames', 'out', 'data', 'config', '.github'}
@@ -33,7 +33,8 @@ def api(method, path, token, body=None):
     })
     try:
         with urllib.request.urlopen(req, timeout=60) as r:
-            return json.loads(r.read().decode('utf-8'))
+            raw = r.read().decode('utf-8')
+            return json.loads(raw) if raw.strip() else {}
     except urllib.error.HTTPError as e:
         raise RuntimeError('GitHub API %s %s -> %d %s' % (method, path, e.code, e.read().decode()[:400]))
 
@@ -58,6 +59,8 @@ def main():
     ap.add_argument('--repo', default=os.environ.get('GITHUB_REPO', ''))
     ap.add_argument('--branch', default='main')
     ap.add_argument('--dry-run', action='store_true', help='只做本地清单核查，不联网')
+    ap.add_argument('--no-dispatch', action='store_true',
+                    help='提交后不自动触发 Actions 重建（默认自动触发一次）')
     ap.add_argument('--incremental', action='store_true',
                     help='增量包模式：不重复上传线上已有的字体等资源')
     a = ap.parse_args()
@@ -71,6 +74,7 @@ def main():
     if not (a.token and a.owner and a.repo):
         print('缺少 token / owner / repo', file=sys.stderr); return 2
     base = '/repos/%s/%s' % (a.owner, a.repo)
+    stamp = time.strftime('%Y-%m-%dT%H:%MZ', time.gmtime())
     ref = api('GET', base + '/git/ref/heads/' + a.branch, a.token)['object']['sha']
     commit = api('GET', base + '/git/commits/' + ref, a.token)
     tree = commit['tree']['sha']
@@ -82,10 +86,26 @@ def main():
         print('  +', rel, len(data))
     nt = api('POST', base + '/git/trees', a.token, {'base_tree': tree, 'tree': entries})['sha']
     nc = api('POST', base + '/git/commits', a.token,
-             {'message': 'chore: 每日要闻工作台初版落地', 'tree': nt, 'parents': [ref]})['sha']
+             {'message': 'chore: 每日要闻工作台 %s · %d 文件' % (stamp, len(entries)),
+              'tree': nt, 'parents': [ref]})['sha']
     api('PATCH', base + '/git/refs/heads/' + a.branch, a.token, {'sha': nc})
-    print('SUCCESS 已提交 %d 个文件，commit %s' % (len(entries), nc[:12]))
-    print('下一步：Actions → Run workflow 一次 → Ctrl+F5')
+    # 回读校验：PATCH 返回 2xx 不等于分支真的指向新提交
+    head = api('GET', base + '/git/ref/heads/' + a.branch, a.token)['object']['sha']
+    if head != nc:
+        raise RuntimeError('提交后回读不一致：ref=%s / 新提交=%s' % (head[:12], nc[:12]))
+    print('SUCCESS 源码已提交 %d 个文件 -> %s/%s@%s' % (len(entries), a.owner, a.repo, a.branch))
+    print('        commit %s  (%s)' % (nc, stamp))
+    print('        本脚本只上传源码；media/ 成品与 Pages 站点不会跟着自动更新。')
+    if not a.no_dispatch:
+        try:
+            api('POST', base + '/actions/workflows/daily.yml/dispatches', a.token,
+                {'ref': a.branch})
+            print('        已自动触发 Actions「每日要闻手动重建」，等 2-5 分钟后 Ctrl+F5。')
+        except Exception as e:
+            print('        警告：自动触发失败，请到 Actions 手动 Run workflow 一次。原因：%s' % e,
+                  file=sys.stderr)
+    else:
+        print('        已跳过自动触发；请到 Actions 手动 Run workflow 一次 -> Ctrl+F5。')
     return 0
 
 

@@ -411,6 +411,10 @@ def payload_from_sheets(sheets, cfg, base_payload):
         })
     if not news or not cover:
         raise SourceError('解析结果为空（口播 %d 条 / 封面 %d 条），停止' % (len(news), len(cover)))
+    limit = int(cfg.get('news_limit') or 0)
+    if limit > 0:
+        news = news[:limit]
+        cover = cover[:limit]
     p = dict(base_payload)
     p['news'] = news
     p['cover'] = cover[:10]
@@ -432,6 +436,10 @@ def fetch_payload(root, cfg, base_payload):
         news, cover = ip.get('news') or [], ip.get('cover') or []
         if not news or not cover:
             raise SourceError('inline_payload 为空（口播 %d / 封面 %d），停止且不沿用旧数据' % (len(news), len(cover)))
+        limit = int(cfg.get('news_limit') or 0)
+        if limit > 0:
+            news = news[:limit]
+            cover = cover[:limit]
         p = dict(base_payload)
         p['news'] = news
         p['cover'] = cover[:10]
@@ -595,7 +603,7 @@ def build_outputs(root, p, cfg):
           'ms_per_char': int(tw_in.get('ms_per_char', 55)), 'max_steps': int(tw_in.get('max_steps', 8))}
     sub['typewriter'] = tw['on']
     export_size = cfg.get('export_size') or (cv.get('size') if isinstance(cv, dict) else None) or 'portrait'
-    if export_size not in ('portrait', 'landscape'):
+    if export_size not in ('portrait', 'landscape', 'xhs', 'wechat', 'square'):
         export_size = 'portrait'
     manifest = {
         'version': p['version'],
@@ -615,7 +623,8 @@ def build_outputs(root, p, cfg):
                      for i, s in enumerate(segs)],
         'cards': cards,
         'source_count': src_count,
-        'sizes': {'portrait': [1080, 1920], 'landscape': [1920, 1080]},
+        'sizes': {'portrait': [1080, 1920], 'landscape': [1920, 1080],
+                  'xhs': [1080, 1440], 'wechat': [1080, 1260], 'square': [1080, 1080]},
         'export_size': export_size,
         'cover_count': cc,
         'cover': [{'rank': c['rank'], 'label': c['label'], 'title': c['title'],

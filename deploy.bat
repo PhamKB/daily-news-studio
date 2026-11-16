@@ -54,9 +54,10 @@ echo   Step 2 of 2 - uploading now, first run takes 1-3 minutes.
 if errorlevel 1 goto DEPLOY_FAILED
 echo.
 echo  ============================================================
-echo   SUCCESS - deploy.py finished. Now do these on github.com:
-echo   Settings - Pages - Source - GitHub Actions
-echo   Actions - Run workflow once - then Ctrl+F5 in the browser.
+echo   SUCCESS - source uploaded. A rebuild was triggered automatically.
+echo   Settings - Pages - Source - GitHub Actions (first time only)
+echo   Wait 2-5 min for Actions, then Ctrl+F5 in the browser.
+echo   If Actions did not start: Actions - Run workflow once.
 echo  ============================================================
 goto DONE
 :DEPLOY_FAILED

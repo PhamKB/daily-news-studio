@@ -16,7 +16,21 @@ THEMES = {
     'paper':     {'n': '暖米纸', 'bg': '#faf5ea', 'txt': '#2a2118', 'sub': '#756454', 'line': 'rgba(42,33,24,.13)',  'card': 'rgba(42,33,24,.035)',  'acc': '#c03a24', 'dark': False},
     'ice':       {'n': '浅冰蓝', 'bg': '#f0f6fc', 'txt': '#12263d', 'sub': '#5a7390', 'line': 'rgba(18,38,61,.12)',  'card': 'rgba(18,38,61,.035)',  'acc': '#c8321f', 'dark': False},
 }
-SIZES = {'portrait': (1080, 1920), 'landscape': (1920, 1080)}
+SIZES = {'portrait': (1080, 1920), 'landscape': (1920, 1080),
+         'xhs': (1080, 1440), 'wechat': (1080, 1260), 'square': (1080, 1080)}
+# 平台 -> 成品文件名中缀；页面 / 服务端 / 出品 CLI 共用
+ENAME = {'portrait': '竖版9比16', 'landscape': '横版16比9',
+         'xhs': '小红书3比4', 'wechat': '视频号6比7', 'square': '方形1比1'}
+def is_land(size):
+    w, h = SIZES.get(size, SIZES['portrait'])
+    return w > h
+# 两条横线 / 日期基线按画布高度归一：新增 3:4 / 6:7 / 1:1 不会撑破画面
+_GEOM = {'line1': (272 / 1080.0, 328 / 1920.0),
+         'line2': (856 / 1080.0, 1512 / 1920.0),
+         'date_y': (226 / 1080.0, 262 / 1920.0)}
+def card_geom(name, W, H):
+    lr, pr = _GEOM[name]
+    return int(round(H * (lr if W > H else pr)))
 GAPS = {'compact': {'gap': .18, 'pad': .55}, 'standard': {'gap': .62, 'pad': .80}, 'airy': {'gap': 1.0, 'pad': 1.0}}
 AVOID_HEAD = set('，。；：！？、）》」』】,.!?;:)]}')
 
@@ -90,7 +104,7 @@ def cover_item_style(cfg, theme, u, size):
     except (TypeError, ValueError):
         base = 0.0
     if base <= 0:
-        base = 34.0 if size == 'landscape' else 38.0
+        base = 34.0 if is_land(size) else 38.0
     color = (st.get('color') or cfg.get('item_color') or
              cfg.get('itemColor') or '')
     auto = st.get('auto_color', cfg.get('item_auto_color', cfg.get('itemAutoColor', True)))
@@ -157,6 +171,18 @@ CARD_BG_ALPHA_LIGHT = .68
 CARD_DATE_Y_P, CARD_DATE_Y_L = 262, 226
 CARD_SRC_GAP_P, CARD_SRC_GAP_L = 96, 72
 CARD_BG_ENABLED = False
+# r19：短画幅改为「大字优先 + 下横线/来源随内容自适应下移」。
+# 3:4 / 6:7 / 1:1 与 9:16 一样宽，按高度线性缩字号只会看不清；
+# 横线与来源也不再钉在固定比例位置，跟着摘要末尾走，腾出的高度全部让给字号。
+CARD_SHORT_FS_MIN = 1.0      # 短画幅正文不低于基准画幅字号
+CARD_SHORT_FS_BOOST = 1.12   # 短画幅正文/摘要在基准上再放大 12%
+CARD_SHORT_FLOOR_P, CARD_SHORT_FLOOR_L = 40, 36  # 极端长文的可读下限（原 32）
+CARD_SHORT_BOTTOM_PAD = 40   # 来源下方固定内边距（单位 u）
+CARD_SHORT_TITLE_MAX = 1.0   # 标题不跟着放大，省下行数给摘要
+CARD_SHORT_LINE_GAP = 44     # 摘要末尾到下横线净距（单位 u，原 60）
+CARD_SHORT_BLH = 1.40        # 短画幅行距系数（原 1.48，略收紧换字号）
+CARD_SHORT_HDR_MIN = .84   # 短画幅报头 42/27/25（原 37/24/22），起点同步上移避免叠字
+CARD_SHORT_BRAND_AT = 136  # 短画幅大标题起点（原 148u），给放大的报头让出净距
 
 # r14：折行只保留「数字/小数/单位」原子 + 单字，删除词组表。
 # 词组整块保护会把放不下的词整体推到下一行，右侧留一大片空白（用户反复指出的提前换行）。
@@ -420,8 +446,9 @@ def render_cover(root, payload, cfg, out_path, meta_path=None):
     head = cfg.get('cover_header') or payload.get('cover_header') or {}
     issue = cfg.get('issue') or payload.get('issue_cfg') or {}
     W, H = SIZES.get(size, SIZES['portrait'])
-    # 横竖共用短边缩放：16:9 与 9:16 字号一致，不再按宽度放大
-    u = min(W, H) / 1080.0
+    # 短画幅整张等比：3:4 / 6:7 / 1:1 的报头、字号、间距、横线同源缩放；
+    # 9:16 与 16:9 的 u 仍为 1，逐像素不变。
+    u = H / (1080.0 if is_land(size) else 1920.0)
     base = rgb(theme['bg'])
     line_c = rgba_color(theme['line'], base)
     acc = rgb(theme['acc'])
@@ -478,7 +505,7 @@ def render_cover(root, payload, cfg, out_path, meta_path=None):
     # 内容区：条数可设置；竖版单列 N 行，横版 2 列（前 ceil(N/2) 左、其余右）
     n = cover_count(cfg, payload)
     items = payload['cover'][:n]
-    cols = 2 if (size == 'landscape' and n >= 2) else 1
+    cols = 2 if (is_land(size) and n >= 2) else 1
     rows = math.ceil(n / cols)
     bottom_pad = int(58 * u)
     avail = H - head_bottom - bottom_pad
@@ -490,7 +517,7 @@ def render_cover(root, payload, cfg, out_path, meta_path=None):
     min_gap = max(2, int(3 * u))
     cap = avail * (.99 if rows >= 8 else fill) / rows
 
-    k = 1.0 if size == 'portrait' else .86
+    k = .86 if is_land(size) else 1.0
     badge = int(50 * k * u)
     num_fs = int(30 * k * u)
     nf = F(num_fs, root, True)
@@ -662,9 +689,16 @@ def render_card(root, card, cfg, out_path, meta_path=None, reveal=1.0):
     """
     theme = THEMES.get(cfg.get('theme', 'deep_blue'), THEMES['deep_blue'])
     tpl = cfg.get('tpl', 'frame_card')
-    land = cfg.get('size', 'portrait') == 'landscape'
+    land = is_land(cfg.get('size', 'portrait'))
     W, H = SIZES.get(cfg.get('size', 'portrait'), SIZES['portrait'])
-    u = min(W, H) / 1080.0
+    # 短画幅（3:4 / 6:7 / 1:1）整卡等比：报头、字号、行距、两条横线一起缩放。
+    # 旧版只把 line1/line2/date_y 按 H 归一，而 brand_y 与字号固定不缩，
+    # 1080 高时日期 y=147 与大标题 y=148 撞在一起、横线穿过文字。
+    # 9:16 与 16:9 的 u 仍为 1，逐像素不变。
+    u = H / (1080.0 if land else 1920.0)
+    short = u < 1
+    fs_u = max(u, CARD_SHORT_FS_MIN) * CARD_SHORT_FS_BOOST if short else u
+    hdr_u = max(u, CARD_SHORT_HDR_MIN) if short else u
     base = rgb(theme['bg']); sub = rgb(theme['sub'])
     acc = rgb(theme['acc']); line_c = rgba_color(theme['line'], base)
     title_col = card_title(theme)
@@ -694,63 +728,91 @@ def render_card(root, card, cfg, out_path, meta_path=None, reveal=1.0):
     dot_y = int(96 * u); dot_r = int(9 * u)
     d.ellipse([M, dot_y - dot_r, M + 2 * dot_r, dot_y + dot_r], fill=acc)
     _spaced(d, M + int(34 * u), dot_y - int(14 * u), 'D A I L Y   B R I E F',
-            F(int(22 * u), root, True), meta_col, 3 * u)
-    issue_fs = int(CARD_ISSUE_FS * u); f_is = F(issue_fs, root, True)
+            F(int(22 * hdr_u), root, True), meta_col, 3 * u)
+    issue_fs = int(CARD_ISSUE_FS * hdr_u); f_is = F(issue_fs, root, True)
     iw = int(d.textlength(issue_s, font=f_is)) + int(48 * u)
     ih, iy, ix = int(60 * u), int(70 * u), R - iw
     _bco = _sem_palette(theme)
     _issue_badge(d, R, iy + ih // 2, issue_s, f_is, _bco, u) if show_i else None
-    brand_fs = int(CARD_BRAND_FS * u); date_fs = int(CARD_DATE_FS * u)
-    brand_y = int((124 if land else 148) * u)
-    date_y = int((CARD_DATE_Y_L if land else CARD_DATE_Y_P) * u)
+    brand_fs = int(CARD_BRAND_FS * hdr_u); date_fs = int(CARD_DATE_FS * hdr_u)
+    brand_y = int((124 if land else (CARD_SHORT_BRAND_AT if short else 148)) * u)
+    date_y = card_geom('date_y', W, H)
     if show_t:
         txt(d, (M, brand_y), brand, F(brand_fs, root, True), title_col, True)
     if show_d and date_s:
         txt(d, (M, date_y), date_s, F(date_fs, root), meta_col, False, 'lm')
 
-    line1 = int((CARD_LINE1_L if land else CARD_LINE1_P) * u)
+    line1 = card_geom('line1', W, H)
     d.line([M, line1, R, line1], fill=line_c, width=max(1, int(2 * u)))
 
     # ---- 正文标题：首行缩进 + 填满折行
-    indent = int((CARD_INDENT_L if land else CARD_INDENT_P) * u)
-    title_fs = int((CARD_TITLE_FS_L if land else CARD_TITLE_FS_P) * u)
-    tlh = int((72 if land else 84) * u)
+    indent = int((CARD_INDENT_L if land else CARD_INDENT_P) * fs_u)
+    t_u = min(fs_u, CARD_SHORT_TITLE_MAX) if short else fs_u
+    title_fs = int((CARD_TITLE_FS_L if land else CARD_TITLE_FS_P) * t_u)
+    tlh = int((72 if land else 84) * t_u)
     tf = F(title_fs, root, True)
     ty = line1 + int(44 * u)
     tlines = fill_wrap(d, ttl, tf, CW, indent)
-    for i, (ln, off) in enumerate(tlines):
-        txt(d, (M + off, ty + i * tlh), ln, tf, title_col, True)
-    title_end = ty + len(tlines) * tlh
 
     # ---- 摘要：只取「内容摘要」列；Excel 行首全角空格换算成缩进，其余清掉
-    body_fs = int((CARD_BODY_L if land else CARD_BODY_P) * u)
-    blh = int((54 if land else 62) * u)
+    body_fs = int((CARD_BODY_L if land else CARD_BODY_P) * fs_u)
+    # 9:16 / 16:9 沿用旧版固定行高，保证基准画幅逐像素不变；短画幅才按字号比例算
+    blh = int((54 if land else 62) * u) if not short else int(body_fs * CARD_SHORT_BLH)
     bf = F(body_fs, root)
     excel_indent = len(re.match(r'^[\u3000\u00a0]*', str(raw_smy)).group(0)) * body_fs
     body_txt = re.sub(r'^[\u3000\u00a0]+', '', str(raw_smy)).replace('\u3000', '')
     body_txt = re.sub(r'[ \t]*\n[ \t]*', '', body_txt)
     sind = excel_indent if excel_indent > 0 else indent
     para_gap = int((CARD_PARA_GAP_L if land else CARD_PARA_GAP_P) * u)
-    sy = title_end + para_gap
     slines = fill_wrap(d, body_txt, bf, CW, sind)
+    line2_target = card_geom('line2', W, H)
+    min_fs = int((32 if land else 36) * fs_u)
+    truncated = False
+    src_gap_v = int((CARD_SRC_GAP_L if land else CARD_SRC_GAP_P) * u)
+    src_lh_v = int((34 if land else 40) * u)
+    max_line2 = H - src_gap_v - src_lh_v - int(CARD_SHORT_BOTTOM_PAD * u)
 
-    # 内容多时按可用高度收敛字号（下限竖 36 / 横 32），保证不压线2、不出界
-    line2_target = int((CARD_LINE2_L if land else CARD_LINE2_P) * u)
-    min_fs = int((32 if land else 36) * u)
-    while body_fs > min_fs:
-        end = sy + len(slines) * blh
-        if end <= line2_target - int(60 * u):
-            break
-        body_fs -= max(1, int(1 * u)); bf = F(body_fs, root)
-        blh = int((54 if land else 62) * u) / ((62 if not land else 54)) * (62 if not land else 54)
-        blh = int(body_fs * (1.48 if not land else 1.42))
-        slines = fill_wrap(d, body_txt, bf, CW, sind)
+    def _need():
+        return len(tlines) * tlh + para_gap + len(slines) * blh
+
+    if short:
+        # r19：下横线与来源不再钉在固定比例位置，而是跟着摘要末尾往下走。
+        # 可用高度算到「来源下方留固定内边距」为止，比旧版固定 line2_target 多出一截，
+        # 全部让给字号：起始 47/43px，极端长文才逐步收，下限 40/36，绝不回到 32px。
+        avail = max(160, max_line2 - int(CARD_SHORT_LINE_GAP * u) - ty)
+        floor_fs = CARD_SHORT_FLOOR_L if land else CARD_SHORT_FLOOR_P
+        while _need() > avail and body_fs > floor_fs:
+            body_fs -= 1; bf = F(body_fs, root)
+            blh = int(body_fs * CARD_SHORT_BLH)
+            slines = fill_wrap(d, body_txt, bf, CW, sind)
+        while _need() > avail and len(slines) > 2:
+            slines = slines[:-1]; truncated = True
+            if slines:
+                ln, off = slines[-1]
+                slines[-1] = (ln[:-1] + '…', off)
+    else:
+        while body_fs > min_fs:
+            end = ty + _need()
+            if end <= line2_target - int(60 * u):
+                break
+            body_fs -= 1; bf = F(body_fs, root)
+            blh = int(body_fs * (1.48 if not land else 1.42))
+            slines = fill_wrap(d, body_txt, bf, CW, sind)
+
+    sy = ty + len(tlines) * tlh + para_gap
+    for i, (ln, off) in enumerate(tlines):
+        txt(d, (M + off, ty + i * tlh), ln, tf, title_col, True)
+    title_end = ty + len(tlines) * tlh
     for i, (ln, off) in enumerate(slines):
         txt(d, (M + off, sy + i * blh), ln, bf, sum_col)
     sum_end = sy + len(slines) * blh
 
-    line2 = max(line2_target, sum_end + int(60 * u))
-    line2 = min(line2, H - int(160 * u))
+    if short:
+        # 内容驱动：横线贴着摘要末尾，来源随横线一起往下走，不再固定在比例位置
+        line2 = min(sum_end + int(CARD_SHORT_LINE_GAP * u), max_line2)
+    else:
+        line2 = max(line2_target, sum_end + int(60 * u))
+        line2 = min(line2, H - int(160 * u))
     d.line([M, line2, R, line2], fill=line_c, width=max(1, int(2 * u)))
 
     # ---- 来源：只要渠道名，去掉链接与编号，紧跟线2
@@ -759,7 +821,7 @@ def render_card(root, card, cfg, out_path, meta_path=None, reveal=1.0):
              for x in card.get('sources', [])]
     chans = [c for c in chans if c]
     src_s = '来源：' + ' · '.join(chans)
-    src_fs = int((28 if land else CARD_SRC_FS) * u)
+    src_fs = int((28 if land else CARD_SRC_FS) * fs_u)
     src_y = line2 + int((CARD_SRC_GAP_L if land else CARD_SRC_GAP_P) * u)
     txt(d, (M, src_y), src_s, F(src_fs, root), meta_col, False, 'lm')
     src_end = src_y + int((34 if land else 40) * u)
@@ -790,7 +852,8 @@ def render_card(root, card, cfg, out_path, meta_path=None, reveal=1.0):
         'src_url_intact': True, 'src_atom_wrap': True,
         'src_lines_text': [src_s], 'src_top': src_y, 'src_bottom': src_end,
         'src_gap': src_y - line2, 'summary_bottom': sum_end,
-        'src_anchored_bottom': False, 'src_follows_summary': False,
+        'src_anchored_bottom': False, 'src_follows_summary': bool(short),
+        'content_driven_rule': bool(short), 'src_bottom_pad': H - src_end,
         'src_line_fs': [src_fs], 'subtitle_reserved': False,
         'title_color': list(title_col), 'date_color': list(meta_col),
         'tag_color': list(meta_col), 'title_fs': title_fs,
@@ -800,6 +863,18 @@ def render_card(root, card, cfg, out_path, meta_path=None, reveal=1.0):
         'head_bottom': line1, 'meta_y': 0, 'rule_y': line1,
         'title_theme_adaptive': True, 'content_group_top': True,
         'landscape_single_column': True, 'overflow': src_end > H,
+        # 各文字块的真实 y 边界：短画幅叠字回归靠它判定，而不是只查是否出画布
+        'boxes': {
+            'brand':   [brand_y, brand_y + int(brand_fs * 1.15)],
+            'date':    [date_y - int(date_fs * .6), date_y + int(date_fs * .6)],
+            'kicker':  [dot_y - dot_r, dot_y + dot_r],
+            'title':   [ty, title_end],
+            'summary': [sy, sum_end],
+            'line1':   [line1, line1], 'line2': [line2, line2],
+            'src':     [src_y - int(src_fs * .6), src_end],
+        },
+        'size_scale': u, 'fs_scale': fs_u, 'short_layout': short,
+        'summary_truncated': truncated, 'whitespace_below': line2 - sum_end,
     }
     if meta_path:
         os.makedirs(os.path.dirname(meta_path) or '.', exist_ok=True)
@@ -959,14 +1034,14 @@ def _render_equal_cover(root, payload, cfg, out_path, meta_path, sem):
     theme = THEMES.get(cfg.get('theme', 'deep_blue'), THEMES['deep_blue'])
     size = cfg.get('size', 'portrait')
     W, H = SIZES.get(size, SIZES['portrait'])
-    u = min(W, H) / 1080.0
+    u = H / (1080.0 if is_land(size) else 1920.0)
     co = _sem_palette(theme)
     head = cfg.get('cover_header') or payload.get('cover_header') or {}
     issue = cfg.get('issue') or payload.get('issue_cfg') or {}
     wm = cfg.get('wm') or {}
     n = sem['count']
     items = (payload.get('cover') or [])[:n]
-    land = size == 'landscape'
+    land = is_land(size)
     _cis = cover_item_style(cfg, theme, u, size)
     item_col, item_bold = _cis[2], _cis[3]
     pad = 58 * u
@@ -1141,7 +1216,7 @@ def render_semantic_cover(root, payload, cfg, out_path, meta_path=None):
     theme = THEMES.get(cfg.get('theme', 'deep_blue'), THEMES['deep_blue'])
     size = cfg.get('size', 'portrait')
     W, H = SIZES.get(size, SIZES['portrait'])
-    u = min(W, H) / 1080.0
+    u = H / (1080.0 if is_land(size) else 1920.0)
     co = _sem_palette(theme)
     set_cover_font(cfg)
     _cis = cover_item_style(cfg, theme, u, size)
@@ -1161,7 +1236,7 @@ def render_semantic_cover(root, payload, cfg, out_path, meta_path=None):
     boxes = []           # 区块盒子，仅用于 meta
     section_fs = []      # 各列表统一字号记录（回归用）
     pad = 58 * u
-    land = size == 'landscape'
+    land = is_land(size)
     footer_h = 62 * u
     gap_cfg = cfg.get('gap', 'airy')
     row_gap = {'compact': 18, 'standard': 34, 'airy': 50}.get(gap_cfg, 34) * u

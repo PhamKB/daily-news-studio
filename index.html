@@ -119,6 +119,12 @@ footer{max-width:1680px;margin:auto;padding:14px 22px 40px;color:var(--dim);font
 
 /* 正文独立编辑框 */
 #bodyEditors{display:flex;flex-direction:column;gap:10px;max-height:430px;overflow:auto;padding:2px 4px 2px 0}
+#bodyEditors .ih{display:flex;align-items:center;gap:8px}
+#bodyEditors .ibgrp{margin-left:auto;display:flex;gap:5px}
+#bodyEditors .ib{font-size:12px;padding:2px 8px;border:1px solid var(--line);border-radius:5px;background:transparent;color:var(--sub);cursor:pointer}
+#bodyEditors .ib:hover:not(:disabled){border-color:#c8321f;color:var(--txt)}
+#bodyEditors .ib:disabled{opacity:.35;cursor:default}
+#bodyEditors .ib.del:hover{border-color:#c8321f;color:#ff9b8c}
 .itemEdit{border:1px solid var(--line);border-radius:8px;background:#0a1725;padding:10px 12px}
 .itemEdit .ih{display:flex;gap:9px;align-items:center;margin-bottom:6px;font:11.5px var(--mono);color:var(--dim)}
 .itemEdit .ih b{color:var(--acc);font-weight:700}
@@ -285,12 +291,17 @@ body.pv-player .stage .timeline,body.pv-player .stage .pbar,body.pv-player .stag
 
   <!-- 2 口播文稿 -->
   <section class="panel" id="sec-script"><div class="ph"><span class="n">02</span><h2>口播文稿（分段可编辑）</h2><span class="tag" id="scriptTag">33 段</span></div><div class="pb">
-   <div class="okbar">拼接顺序：<b>开场 → 资讯窗口说明 → 表格「处理后的数据」30 条（标题。重点句＋内容摘要。）→ 片尾</b>。<b>不念「第 N 条」、不念来源</b>；来源只在视频卡片上展示；开场与片尾可单独编辑。</div>
+   <div class="okbar">拼接顺序：<b>开场 → 资讯窗口说明 → 表格「处理后的数据」当前生效条数（标题。内容摘要。）→ 片尾</b>。<b>不念「第 N 条」、不念来源</b>；来源只在视频卡片上展示；开场与片尾可单独编辑。</div>
    <div class="seg"><label>① 开场（独立可编辑）</label><textarea id="openText" rows="3" spellcheck="false"></textarea></div>
    <div class="seg"><label>② 资讯窗口说明（独立可编辑 · 默认念出，可关闭）
      <label class="opt" style="display:inline;margin-left:10px"><input type="checkbox" id="windowOn" checked> 加入口播</label></label>
     <textarea id="windowText" rows="2" spellcheck="false"></textarea></div>
-   <div class="seg"><label>③ 正文 30 条 · <b>每条一个独立编辑框</b>（改任一条，字幕 / 卡片 / 时间轴 / hash 一起重算）
+   <div class="row" style="margin:2px 0 10px"><label class="lb">资讯条数</label>
+     <div class="chips" id="newsLimitChips"></div>
+     <input type="number" id="newsLimit" min="0" max="999" step="1" value="0" style="width:80px">
+     <span class="mini" id="newsLimitStat">0 = 全部</span>
+     <span class="mini">只保留前 N 条；例如填 10，文稿 / 卡片 / 封面 / 字幕 / 时间轴都只有前 10 条</span></div>
+   <div class="seg"><label>③ 正文 <b id="bodyCountLabel">30 条</b> · <b>每条一个独立编辑框</b>（可删除、上移 / 下移调序；改任一条，字幕 / 卡片 / 时间轴 / hash 一起重算）
      <button class="sm" id="btnBodyExpand" style="margin-left:8px">全部展开</button>
      <span class="mini" id="bodyEditStat"></span></label>
     <div id="bodyEditors"></div>
@@ -299,7 +310,7 @@ body.pv-player .stage .timeline,body.pv-player .stage .pbar,body.pv-player .stag
    <div class="okbar"><b>免责声明（页面与片尾帧展示，不朗读、不进口播、不进字幕）</b>：内容依据公开信息整理，具体以官方发布为准；仅供参考，不构成投资、医疗或法律建议。</div>
    <div class="seg"><label>完整拼接预览（只读 · 一句口播 = 一条字幕）</label><div class="fullbox" id="scriptFull"></div></div>
    <div class="row"><button id="btnResetScript">恢复默认四段</button><button id="btnExportScript">⬇ 导出 口播文稿.md</button><span class="mini" id="scriptStat"></span></div>
-   <p class="hint">开场 / 窗口说明 / 片尾各自独立编辑；正文 <b>30 条各一个编辑框</b>，改任一条后句子表、卡片、字幕、时间轴按新 hash 重算。<b>封面独立取封面 sheet</b>，改文稿标题不会自动改封面，校验闸会把不一致检出来。</p>
+   <p class="hint">开场 / 窗口说明 / 片尾各自独立编辑；正文每条一个独立编辑框，<b>可删除、上移 / 下移调整顺序</b>，也可用「资讯条数」只保留前 N 条；改任一条后句子表、卡片、字幕、时间轴按新 hash 重算。<b>封面独立取封面 sheet</b>，改文稿标题不会自动改封面，校验闸会把不一致检出来。</p>
   </div></section>
 
   <!-- 3 封面 -->
@@ -359,7 +370,7 @@ body.pv-player .stage .timeline,body.pv-player .stage .pbar,body.pv-player .stag
    <div class="row"><label class="lb">尺寸</label><div class="chips" id="cdSizes"></div></div>
    <div class="row"><button id="cdPrev">← 上一张</button><button id="cdNext">下一张 →</button><input type="number" id="cdJump" min="1" max="30" value="1" style="width:70px"><button id="btnJump">跳转</button>
     <button id="btnExportCardCfg">⬇ 导出 video_card_theme.json</button><button id="btnExportCardPng">⬇ 导出当前卡 PNG</button></div>
-   <div class="okbar">四要素固定：<b>标题 / 重点句（首行突出） / 内容摘要 / 来源（平台 + 完整地址）</b>。本期 30 张卡共 <b id="srcCount">35</b> 个来源条目，全部带完整 URL；多来源全保留。</div>
+   <div class="okbar">四要素固定：<b>标题 / 内容摘要 / 来源（渠道）</b>。本期 <b id="cardTotal">30</b> 张卡共 <b id="srcCount">35</b> 个来源条目；条数随 02 区设置变化。</div>
    <p class="hint">字幕默认烧录进画面，并按片段逐片替换显示（一片最多 30 字），不再把整句堆在画面里；成品的卡片切换与字幕由逐句真实音频时长驱动。</p>
   </div></section>
 
@@ -589,7 +600,14 @@ function subChunkAt(text,ratio){
  return {chunks:cs,idx:idx,text:cs[idx],inner:inner,count:cs.length};
 }
 const CD_TPLS={frame_card:'标准卡',frame_minimal:'极简列表',frame_headline:'报头重点'};
-const SIZES={portrait:{n:'竖版 9:16',w:1080,h:1920},landscape:{n:'横版 16:9',w:1920,h:1080}};
+const SIZES={portrait:{n:'抖音/快手 · 9:16',w:1080,h:1920},landscape:{n:'B站 · 16:9',w:1920,h:1080},
+  xhs:{n:'小红书 · 3:4',w:1080,h:1440},wechat:{n:'视频号 · 6:7',w:1080,h:1260},square:{n:'方形 · 1:1',w:1080,h:1080}};
+const ENAME={portrait:'竖版9比16',landscape:'横版16比9',xhs:'小红书3比4',wechat:'视频号6比7',square:'方形1比1'};
+function isLand(k){const s=SIZES[k]||SIZES.portrait;return s.w>s.h}
+function stageRatio(k){const s=SIZES[k]||SIZES.portrait,el=document.querySelector('.pstage');if(el)el.style.aspectRatio=(s.w+'/'+s.h)}
+function enameOf(k){return ENAME[k]||ENAME.portrait}
+function cardGeom(W,H){const land=W>H,r=(a,b)=>Math.round(H*(land?a/1080:b/1920));
+  return{dateY:r(226,262),line1:r(272,328),line2:r(856,1512)}}
 const GAPS={compact:'紧凑',standard:'标准',airy:'宽松'};
 /* 提前定义：状态迁移（localStorage）在脚本前段就会读它，放后面会 TDZ 抛错被 catch 吞掉 */
 const CV_SEPS={bands:'隔行底色',cards:'独立卡片',lines:'细线分隔',bars:'左侧色条',none:'纯留白',
@@ -686,12 +704,12 @@ function alignIssueFromOpening(){
  return true;
 }
 const ISSUE_AUTO=autoIssue();
-const STATE_VER='l1-7';
+const STATE_VER='l1-8';
 const DEF={
  source:{type:'snapshot',url:P.source_url,sheetScript:P.sheet_script,sheetCover:P.sheet_cover,onFail:'stop_and_report',msg:''},
  issue:JSON.parse(JSON.stringify(ISSUE_AUTO)),
  script:{opening:openingTemplate(ISSUE_AUTO),windowOn:true,windowText:P.window_statement,
-         body:P.news.map(n=>n.title+'。'+String(n.summary).replace(/\n/g,'').replace(/\u3000/g,'')).join('\n\n'),closing:P.close},
+         body:P.news.map(n=>n.title+'。'+String(n.summary).replace(/\n/g,'').replace(/\u3000/g,'')).join('\n\n'),closing:P.close,limit:0},
  cover:{theme:'deep_blue',tpl:'semantic',size:'portrait',gap:'airy',count:8,sep:'bands',altBands:true,sepStrength:1,sepAccent:false,
         itemFont:'wqy',itemFs:0,itemColor:'',itemAutoColor:true,itemBold:true,
         wm:{on:false,text:'今日要闻速览 · '+ISSUE_AUTO.date,pos:'bottom_right',alpha:.12},
@@ -739,6 +757,54 @@ if(S.userImported&&S.importedPayload&&S.importedPayload.news&&S.importedPayload.
  P.news=JSON.parse(JSON.stringify(S.importedPayload.news));
  P.cover=JSON.parse(JSON.stringify(S.importedPayload.cover||P.cover));
 }
+/* 文稿视图全量底稿：删除 / 调序 / 只保留前 N 条都落在这里；P.news / P.cover 只存当前生效的前 N 条，
+   所以卡片、封面、句子表、字幕、时间轴、导出配置无需各改一遍就自动同源。 */
+let __ALL_NEWS=JSON.parse(JSON.stringify(P.news));
+let __ALL_COVER=JSON.parse(JSON.stringify(P.cover));
+let __ALL_BODY=bodyItems();
+/* 本机编辑过的文稿视图存 localStorage，刷新后优先于仓库 data_source.json，否则删除/调序/条数会被覆盖回旧数据 */
+function saveNewsView(){
+ S.newsView={all_news:JSON.parse(JSON.stringify(__ALL_NEWS)),all_cover:JSON.parse(JSON.stringify(__ALL_COVER)),
+  all_body:__ALL_BODY.slice(),limit:+S.script.limit||0};
+}
+function newsLimit(){const v=parseInt(S.script.limit,10);return isNaN(v)||v<=0?__ALL_NEWS.length:Math.min(Math.max(1,v),__ALL_NEWS.length)}
+function applyNewsView(){
+ const n=newsLimit();
+ P.news=JSON.parse(JSON.stringify(__ALL_NEWS.slice(0,n)));
+ P.cover=JSON.parse(JSON.stringify(__ALL_COVER.slice(0,Math.min(n,__ALL_COVER.length))));
+ S.script.body=__ALL_BODY.slice(0,n).join('\n\n');
+ S.card.index=Math.max(1,Math.min(P.news.length,S.card.index));
+ if(S.cover.count>P.news.length)S.cover.count=Math.max(1,P.news.length);
+ const bt=$('bodyText');if(bt)bt.value=S.script.body;
+ saveNewsView();
+}
+if(S.newsView&&S.newsView.all_news&&S.newsView.all_news.length){
+ __ALL_NEWS=JSON.parse(JSON.stringify(S.newsView.all_news));
+ __ALL_COVER=JSON.parse(JSON.stringify(S.newsView.all_cover||[]));
+ __ALL_BODY=(S.newsView.all_body||[]).slice();
+ S.script.limit=+(S.newsView.limit||0);
+ applyNewsView();
+}
+function setNewsLimit(v){
+ const k=parseInt(v,10);S.script.limit=isNaN(k)||k<=0?0:k;
+ applyNewsView();save();render();
+}
+function delNews(i){
+ if(i<0||i>=__ALL_NEWS.length)return;
+ __ALL_NEWS.splice(i,1);if(i<__ALL_COVER.length)__ALL_COVER.splice(i,1);
+ if(i<__ALL_BODY.length)__ALL_BODY.splice(i,1);
+ /* 已设「前 N 条」时删除一条就少一条，不让第 N+1 条悄悄补位 */
+ if(+S.script.limit>0)S.script.limit=Math.max(1,+S.script.limit-1);
+ applyNewsView();save();render();
+}
+function moveNews(i,d){
+ const j=i+d;if(i<0||j<0||i>=__ALL_NEWS.length||j>=__ALL_NEWS.length)return;
+ [__ALL_NEWS[i],__ALL_NEWS[j]]=[__ALL_NEWS[j],__ALL_NEWS[i]];
+ if(i<__ALL_COVER.length&&j<__ALL_COVER.length)[__ALL_COVER[i],__ALL_COVER[j]]=[__ALL_COVER[j],__ALL_COVER[i]];
+ if(i<__ALL_BODY.length&&j<__ALL_BODY.length)[__ALL_BODY[i],__ALL_BODY[j]]=[__ALL_BODY[j],__ALL_BODY[i]];
+ applyNewsView();save();render();
+}
+function syncAllNews(){__ALL_NEWS=JSON.parse(JSON.stringify(P.news));__ALL_COVER=JSON.parse(JSON.stringify(P.cover));__ALL_BODY=bodyItems();}
 function save(){try{const o=JSON.parse(JSON.stringify(S));o.bgm.url=null;o.locked=S.locked;localStorage.setItem(STATE_KEY,JSON.stringify(o));}catch(e){}}
 function h12(s){return md5(s).slice(0,12)}
 function fullText(){const x=S.script;return [x.opening,x.windowOn?x.windowText:'',x.body,x.closing].filter(t=>String(t).trim()).join('\n\n')}
@@ -777,7 +843,7 @@ function renderCoverCountUI(){
  const cmax=coverMax();if(S.cover.count>cmax)S.cover.count=cmax;
  $('cvCount').max=cmax;$('cvCount').value=coverCount();
  chips($('cvCounts'),COUNT_PRESETS,String(coverCount()),k=>{S.cover.count=+k;setPv('cover')});
- const cl=coverLayout(coverCount(),S.cover.size==='landscape'),n=coverCount();
+ const cl=coverLayout(coverCount(),isLand(S.cover.size)),n=coverCount();
  $('cvCountStat').textContent='显示 '+n+' 条 · '+(cl.cols===2?'横版 '+cl.rows+' 行 × 2 列（前 '+cl.rows+' 条左、其余右）':'竖版 '+cl.rows+' 行')+' · 排版随条数自适应';
 }
 function download(name,text,mime){
@@ -1178,9 +1244,9 @@ function drawEqualCover(ctx,co,T,W,H,u,sem,pad,footerH,land,showT,showD,showI,ti
    统计条、头条摘要、来源行、时间角标、N条合并、逐条细线全部去掉。
    所有文字走顺序行盒，逐行推进 y，并登记 bbox 做两两相交自检。 */
 function drawSemanticCover(){
- const cv=$('cvCanvas'),T=THEMES[S.cover.theme],sz=SIZES[S.cover.size],land=S.cover.size==='landscape';
+ const cv=$('cvCanvas'),T=THEMES[S.cover.theme],sz=SIZES[S.cover.size],land=isLand(S.cover.size);
  cv.width=sz.w;cv.height=sz.h;
- const ctx=cv.getContext('2d'),W=sz.w,H=sz.h,u=Math.min(W,H)/1080,co=semPalette(T);
+ const ctx=cv.getContext('2d'),W=sz.w,H=sz.h,u=H/(W>H?1080:1920),co=semPalette(T);
  const _cis=coverItemStyle(T,u,land);SEMFONT=_cis.fam;SEMWEIGHT=_cis.w;SEMCOL=_cis.col;
  ctx.fillStyle=co.bg;ctx.fillRect(0,0,W,H);
  ctx.fillStyle=co.acc;ctx.fillRect(0,0,W,Math.max(3,6*u));
@@ -1410,10 +1476,10 @@ function drawSemanticCover(){
 function drawCover(){
  if(S.cover.tpl==='semantic'){drawSemanticCover();return}
  const cv=$('cvCanvas'),T=THEMES[S.cover.theme],sz=SIZES[S.cover.size];
- cv.width=sz.w;cv.height=sz.h;const ctx=cv.getContext('2d'),W=sz.w,H=sz.h,u=Math.min(W,H)/1080;
+ cv.width=sz.w;cv.height=sz.h;const ctx=cv.getContext('2d'),W=sz.w,H=sz.h,u=H/(W>H?1080:1920);
  ctx.fillStyle=T.bg;ctx.fillRect(0,0,W,H);
  drawWatermark(ctx,W,H,T,S.cover);
- const pad=58*u,land=S.cover.size==='landscape';
+ const pad=58*u,land=isLand(S.cover.size);
  ctx.fillStyle=T.acc;ctx.fillRect(0,0,W,6*u);
  const showT=!!S.cover.showTitle,showD=!!S.cover.showDate,showI=!!S.cover.showIssue;
  const titleTxt=String(S.cover.title||'');
@@ -1584,8 +1650,13 @@ function fillWrapText(ctx,text,font,maxW,indent){
 
 function drawCard(canvas,idx,forPlayer,reveal){
  const c=P.news[idx]||P.news[0],T=THEMES[S.card.theme],sz=SIZES[S.card.size];
- const W=forPlayer?540:sz.w,H=forPlayer?960:sz.h,u=Math.min(W,H)/1080;
- const land=!forPlayer&&S.card.size==='landscape';
+ const W=forPlayer?540:sz.w,H=forPlayer?960:sz.h;
+ const land=!forPlayer&&isLand(S.card.size);
+ // 短画幅整卡等比：报头、字号、行距、两条横线一起缩；9:16 / 16:9 仍为 1
+ const u=H/(land?1080:1920);
+ /* r19：短画幅正文不再线性缩，基准字号上再放大 12%；9:16 / 16:9 的 u=1 逐像素不变。
+    下横线与来源跟着摘要末尾往下走，腾出的高度全部让给字号，不再拉行距铺满。 */
+ const short=u<1,fsU=short?1.12:u;
  canvas.width=W;canvas.height=H;const ctx=canvas.getContext('2d');
  const M=Math.round((land?120:96)*u),R=W-M,CW=R-M;
  const INK=cardInk(T),acc=T.acc,lineC=T.line;
@@ -1596,13 +1667,14 @@ function drawCard(canvas,idx,forPlayer,reveal){
  if(tpl==='frame_headline'){
   ctx.fillStyle=acc;ctx.fillRect(0,0,W,Math.max(4,6*u));
  }
- const hdrFs=[50,32,30].map(v=>Math.round(v*u));
+ const hdrU=u<1?Math.max(u,.84):u;
+ const hdrFs=[50,32,30].map(v=>Math.round(v*hdrU));
  const brand=String(S.cover.title||'今日要闻速览');
  const dateS=String(S.issue.date_cn||S.issue.date_line||S.issue.date||'').replace('，',' · ');
  const issueS=normIssue(S.issue.issue_no||'第01期');
  const dotY=Math.round(96*u),dotR=Math.round(9*u);
  ctx.fillStyle=acc;ctx.beginPath();ctx.arc(M,dotY,dotR,0,Math.PI*2);ctx.fill();
- ctx.font='800 '+Math.round(22*u)+'px '+SEMFONT;ctx.fillStyle=INK.meta;
+ ctx.font='800 '+Math.round(22*hdrU)+'px '+SEMFONT;ctx.fillStyle=INK.meta;
  ctx.textAlign='left';ctx.textBaseline='alphabetic';
  let kdx=M+34*u;
  for(const ch of 'D A I L Y   B R I E F'){ctx.fillText(ch,kdx,dotY-14*u+22*u);kdx+=ctx.measureText(ch).width+3*u;}
@@ -1612,7 +1684,7 @@ function drawCard(canvas,idx,forPlayer,reveal){
   ctx.fillStyle=T.dark?acc:mixHex(acc,'#000000',.12);rr(ctx,capX,capY,capW,capH,capH/2);ctx.fill();
   ctx.fillStyle='#fff';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(issueS,capX+capW/2,capY+capH/2);
  }
- const brandY=Math.round((land?124:148)*u),dateY=Math.round((land?226:262)*u);
+ const cg=cardGeom(W,H),brandY=Math.round((land?124:(short?136:148))*u),dateY=cg.dateY;
  if(S.cover.showTitle){
   ctx.font='800 '+hdrFs[0]+'px '+SEMFONT;ctx.fillStyle=INK.title;
   ctx.textAlign='left';ctx.textBaseline='top';ctx.fillText(brand,M,brandY);
@@ -1621,42 +1693,65 @@ function drawCard(canvas,idx,forPlayer,reveal){
   ctx.font=hdrFs[1]+'px '+SEMFONT;ctx.fillStyle=INK.meta;
   ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(dateS,M,dateY);
  }
- const line1=Math.round((land?272:328)*u);
+ const line1=cg.line1;
  ctx.strokeStyle=lineC;ctx.lineWidth=Math.max(1,2*u);
  ctx.beginPath();ctx.moveTo(M,line1);ctx.lineTo(R,line1);ctx.stroke();
- const indent=Math.round((land?76:84)*u);
- const titleFs=Math.round((land?54:60)*u),tlh=Math.round((land?72:84)*u);
+ const indent=Math.round((land?76:84)*fsU);
+ const tU=short?Math.min(fsU,1):fsU;
+ let titleFs=Math.round((land?54:60)*tU),tlh=Math.round((land?72:84)*tU);
  const rv=(typeof reveal==='number')?reveal:1;
  const title=rv<1?String(c.title).slice(0,Math.ceil(String(c.title).length*rv)):String(c.title);
- const tLines=fillWrapText(ctx,title,'800 '+titleFs+'px "WenQuanYi Micro Hei",sans-serif',CW,indent);
  const ty=line1+Math.round(44*u);
- ctx.textAlign='left';ctx.textBaseline='top';ctx.fillStyle=INK.title;
- ctx.font='800 '+titleFs+'px "WenQuanYi Micro Hei",sans-serif';
- tLines.forEach((o,i)=>ctx.fillText(o[0],M+o[1],ty+i*tlh));
- const titleEnd=ty+tLines.length*tlh;
  const raw=rv<1?String(c.summary).slice(0,Math.ceil(String(c.summary).length*rv)):String(c.summary);
  const lead=raw.match(/^[\u3000\u00a0]*/)?.[0]||'';
  const body=raw.replace(/^[\u3000\u00a0]+/,'').replace(/\u3000/g,'').replace(/[ \t]*\n[ \t]*/g,'');
- let bodyFs=Math.round((land?38:42)*u),blh=Math.round(bodyFs*(land?1.42:1.48));
+ const TFONT='"WenQuanYi Micro Hei",sans-serif';
+ let bodyFs=Math.round((land?38:42)*fsU),blh=Math.round(bodyFs*(short?1.40:(land?1.42:1.48)));
  const sInd=lead.length?lead.length*bodyFs:indent;
- const paraGap=Math.round((land?64:80)*u),sy=titleEnd+paraGap;
- let sLines=fillWrapText(ctx,body,bodyFs+'px "WenQuanYi Micro Hei",sans-serif',CW,sInd);
- const line2Target=Math.round((land?856:1512)*u),minFs=Math.round((land?32:36)*u);
- let guard=0;
- while(bodyFs>minFs&&sy+sLines.length*blh>line2Target-60*u&&guard++<80){
-  bodyFs-=1;blh=Math.round(bodyFs*(land?1.42:1.48));
-  sLines=fillWrapText(ctx,body,bodyFs+'px "WenQuanYi Micro Hei",sans-serif',CW,sInd);
+ let paraGap=Math.round((land?64:80)*u),truncated=false;
+ let tLines=fillWrapText(ctx,title,'800 '+titleFs+'px '+TFONT,CW,indent);
+ let sLines=fillWrapText(ctx,body,bodyFs+'px '+TFONT,CW,sInd);
+ const line2Target=cg.line2,minFs=Math.round((land?32:36)*fsU);
+ const srcGapV=Math.round((land?72:96)*u),srcLhV=Math.round((land?34:40)*u);
+ const maxLine2=H-srcGapV-srcLhV-Math.round(40*u);
+ const need=()=>tLines.length*tlh+paraGap+sLines.length*blh;
+ if(short){
+  /* r19：可用高度算到「来源下方留固定内边距」为止；横线与来源随摘要末尾下移，
+     不再把内容硬塞进固定 line2Target，也不靠拉大行距去填留白。 */
+  const avail=Math.max(160,maxLine2-Math.round(44*u)-ty),floorFs=land?36:40;
+  let guard=0;
+  while(need()>avail&&bodyFs>floorFs&&guard++<80){
+   bodyFs-=1;blh=Math.round(bodyFs*1.40);
+   sLines=fillWrapText(ctx,body,bodyFs+'px '+TFONT,CW,sInd);
+  }
+  while(need()>avail&&sLines.length>2){
+   sLines=sLines.slice(0,sLines.length-1);truncated=true;
+   if(sLines.length){const q=sLines[sLines.length-1];sLines[sLines.length-1]=[q[0].replace(/.$/,'…'),q[1]];}
+  }
+ }else{
+  let guard=0,sy0=ty+tLines.length*tlh+paraGap;
+  while(bodyFs>minFs&&sy0+sLines.length*blh>line2Target-60*u&&guard++<80){
+   bodyFs-=1;blh=Math.round(bodyFs*(land?1.42:1.48));
+   sLines=fillWrapText(ctx,body,bodyFs+'px '+TFONT,CW,sInd);
+   sy0=ty+tLines.length*tlh+paraGap;
+  }
  }
- ctx.fillStyle=sumColorHex(T);ctx.font=bodyFs+'px "WenQuanYi Micro Hei",sans-serif';
+ const sy=ty+tLines.length*tlh+paraGap;
+ ctx.textAlign='left';ctx.textBaseline='top';ctx.fillStyle=INK.title;
+ ctx.font='800 '+titleFs+'px '+TFONT;
+ tLines.forEach((o,i)=>ctx.fillText(o[0],M+o[1],ty+i*tlh));
+ const titleEnd=ty+tLines.length*tlh;
+ ctx.fillStyle=sumColorHex(T);ctx.font=bodyFs+'px '+TFONT;
  sLines.forEach((o,i)=>ctx.fillText(o[0],M+o[1],sy+i*blh));
  const sumEnd=sy+sLines.length*blh;
- const line2=Math.min(Math.max(line2Target,sumEnd+60*u),H-160*u);
+ const line2=short?Math.min(sumEnd+Math.round(44*u),maxLine2)
+                  :Math.min(Math.max(line2Target,sumEnd+60*u),H-160*u);
  ctx.strokeStyle=lineC;ctx.lineWidth=Math.max(1,2*u);
  ctx.beginPath();ctx.moveTo(M,line2);ctx.lineTo(R,line2);ctx.stroke();
  const chans=(c.sources||[]).map(s=>String(s.platform||'').replace(/^[A-Za-z]?\d+\s*[·.、]\s*/,'').trim()).filter(Boolean);
  const srcS='来源：'+chans.join(' · ');
- const srcFs=Math.round((land?28:32)*u),srcY=line2+Math.round((land?72:96)*u);
- ctx.font=srcFs+'px "WenQuanYi Micro Hei",sans-serif';ctx.fillStyle=INK.meta;
+ const srcFs=Math.round((land?28:32)*fsU),srcY=line2+Math.round((land?72:96)*u);
+ ctx.font=srcFs+'px '+TFONT;ctx.fillStyle=INK.meta;
  ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(srcS,M,srcY);
  const srcEnd=srcY+Math.round((land?34:40)*u);
  window.__cardDraw={w:W,h:H,u:u,tpl:tpl,brand:brand,date_line:dateS,issue_no:issueS,
@@ -1675,10 +1770,15 @@ function drawCard(canvas,idx,forPlayer,reveal){
   block_gap:paraGap,src_top:srcY,summary_bottom:sumEnd,src_gap:Math.round(srcY-line2),
   src_bottom:srcEnd,date_y:dateY,date_color:INK.meta,tag_color:INK.meta,title_color:INK.title,
   hdr_fs:hdrFs[1],no_fs:0,meta_lift:.62,title_fs:titleFs,
-  src_anchored_bottom:false,src_follows_summary:false,subtitle_reserved:false,
+  src_anchored_bottom:false,src_follows_summary:short,content_driven_rule:short,
+  src_bottom_pad:Math.round(H-srcEnd),subtitle_reserved:false,
   date_no_bg:true,issue_fs:hdrFs[2],header_aligned_cover:true,kicker:true,
   title_theme_adaptive:true,content_group_top:true,landscape_single_column:true,
-  overflow:srcEnd>H,last_y:Math.round(srcEnd)};
+  boxes:{brand:[brandY,brandY+hdrFs[0]*1.15],date:[dateY-hdrFs[1]*.6,dateY+hdrFs[1]*.6],
+   kicker:[dotY-dotR,dotY+dotR],title:[ty,titleEnd],summary:[sy,sumEnd],
+   line1:[line1,line1],line2:[line2,line2],src:[srcY-srcFs*.6,srcEnd]},
+  size_scale:u,fs_scale:fsU,short_layout:short,summary_truncated:truncated,
+  whitespace_below:Math.round(line2-sumEnd),overflow:srcEnd>H,last_y:Math.round(srcEnd)};
 }
 function gates(){
  const seg=segments(),items=P.news,cv=P.cover;
@@ -1686,8 +1786,8 @@ function gates(){
  const tests=[
   ['文稿 sheet 已锁定',S.source.sheetScript==='处理后的数据'],
   ['封面 sheet 已锁定',S.source.sheetCover==='排名最靠前的10条'],
-  ['正文 30 条',items.length===30],
-  ['封面数据 10 条',cv.length===10],
+  ['正文条数 = 设置的前 N 条',items.length===newsLimit()&&items.length>=1],
+  ['封面条数与正文同源',cv.length>=1&&cv.length<=10],
   ['封面条数可设置且合法',!!document.getElementById('cvCount')&&coverCount()>=1&&coverCount()<=coverMax()],
   ['封面标题 = 正文前 N 条（N='+coverCount()+'）',coverItems().every((c,i)=>c.title===items[i].title)],
   ['口播无「第 N 条」序号',!seg.some(x=>/^第\s*\d+\s*条[，,、]/.test(x))],
@@ -1704,7 +1804,10 @@ function gates(){
   ['报头主标题可配且非空',!!String(S.cover.title).trim()],
   ['报头三项显示开关存在',!!($('cvShowTitle')&&$('cvShowDate')&&$('cvShowIssue'))],
   ['内置曲库已移除（仅自定义上传）',BGM_LIB.length===0&&!document.getElementById('bgmLib')&&!document.getElementById('btnBgmStop')],
-  ['正文 30 个独立编辑框',document.querySelectorAll('#bodyEditors textarea').length===items.length],
+  ['正文独立编辑框数 = 条数',document.querySelectorAll('#bodyEditors textarea').length===items.length],
+  ['资讯条数控件与快捷档存在',!!$('newsLimit')&&!!$('newsLimitChips')&&typeof setNewsLimit==='function'],
+  ['文稿可删除 / 上移 / 下移',typeof delNews==='function'&&typeof moveNews==='function'&&document.querySelectorAll('#bodyEditors button.ib').length>0],
+  ['条数设置写入导出配置',String($('btnExportSrc').onclick).indexOf('news_limit')>=0],
   ['字幕设置齐备',!!($('subOn')&&$('subBurn')&&$('subSoft')&&$('subSize')&&$('subPos')&&$('subTypewriter'))],
   ['默认烧录硬字幕',!!S.subtitle.burn_in],
   ['播放器全屏按钮存在',!!document.getElementById('btnFull')],
@@ -1813,13 +1916,20 @@ function render(){
  $('openText').value=S.script.opening;$('windowText').value=S.script.windowText;$('windowOn').checked=S.script.windowOn;
  $('bodyText').value=S.script.body;$('closeText').value=S.script.closing;
  renderBodyEditors();
+ $('newsLimit').value=S.script.limit||0;
+ const _nAll=__ALL_NEWS.length,_nShow=newsLimit();
+ $('newsLimitStat').textContent=(_nShow>=_nAll?'当前全部 '+_nAll+' 条':'只保留前 '+_nShow+' 条 / 全量 '+_nAll+' 条');
+ chips($('newsLimitChips'),{0:'全部',10:'前 10 条',20:'前 20 条',30:'前 30 条'},String(S.script.limit||0),k=>setNewsLimit(k));
+ $('newsLimit').onchange=e=>setNewsLimit(e.target.value);
+ $('bodyCountLabel').textContent=P.news.length+' 条';
+ $('cardTotal').textContent=P.news.length;
  $('scriptFull').textContent=fullText();
  const seg=segments();$('scriptTag').textContent=seg.length+' 段';
  $('scriptStat').textContent='字符 '+fullText().length+' · script_hash '+scriptHash();
  // 封面：尺寸同时决定视频导出尺寸与卡片帧尺寸
  chips($('cvThemes'),THEMES,S.cover.theme,k=>{S.cover.theme=k;setPv('cover')});
  chips($('cvTpls'),CV_TPLS,S.cover.tpl,k=>{S.cover.tpl=k;setPv('cover')});
- chips($('cvSizes'),SIZES,S.cover.size,k=>{S.cover.size=k;S.export_size=k;S.card.size=k;render();setPv('cover')});
+ chips($('cvSizes'),SIZES,S.cover.size,k=>{S.cover.size=k;S.export_size=k;S.card.size=k;stageRatio(k);render();setPv('cover')});
  chips($('cvGaps'),GAPS,S.cover.gap,k=>{S.cover.gap=k;setPv('cover');save()});
  chips($('cvSeps'),CV_SEPS,sepMode(),k=>{S.cover.sep=k;S.cover.altBands=(k==='bands');setPv('cover');save();gates()});
  $('sepStrength').value=Math.round((+S.cover.sepStrength||1)*100);
@@ -1844,7 +1954,7 @@ function render(){
  $('wmAlpha').value=Math.round(S.cover.wm.alpha*100);$('wmAlphaV').textContent=S.cover.wm.alpha.toFixed(2);
  chips($('cdTpls'),CD_TPLS,S.card.tpl,k=>{S.card.tpl=k;setPv('card')});
  chips($('cdThemes'),THEMES,S.card.theme,k=>{S.card.theme=k;setPv('card')});
- chips($('cdSizes'),SIZES,S.card.size,k=>{S.card.size=k;S.cover.size=k;S.export_size=k;render();setPv('card')});
+ chips($('cdSizes'),SIZES,S.card.size,k=>{S.card.size=k;S.cover.size=k;S.export_size=k;stageRatio(k);render();setPv('card')});
  $('cdJump').value=S.card.index;$('cardTag').textContent='第 '+S.card.index+' / '+P.news.length+' 张';
  $('srcCount').textContent=P.news.reduce((a,n)=>a+n.sources.length,0);
  $('vcModes').querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c.dataset.t===S.voice.mode));
@@ -1892,7 +2002,7 @@ function renderStatus(){
  const seg=segments(),ph=previewHash(),same=S.locked&&S.locked===ph;
  if($('lockTag'))$('lockTag').textContent=S.locked?(same?'已锁定 · 一致':'已锁定 · 已变更'):'未锁定';
  if($('lockHint')&&S.locked&&!same)$('lockHint').innerHTML='<b style="color:#ffab9c">⚠ 成品不是你确认的这版</b>：锁定后改动了配置或文稿，请重新「锁定并合成」。';
- $('foot').innerHTML='每日要闻工作台 · 本期 '+S.issue.date_line+' '+S.issue.issue_no+' · '+seg.length+' 句 = 开场 1 + 窗口说明 '+(S.script.windowOn?1:0)+' + 30 资讯卡 + 片尾 1 · 窗口 昨日20:00—今日20:00 · 预览 hash <span class="file">'+ph+'</span> · 页面只读 data.js 与 media/ 成品 · 无渠道 md / 无 SKILL / 无打分筛选 / 无 AI 编排 / 无密钥 · 配乐仅自定义上传';
+ $('foot').innerHTML='每日要闻工作台 · 本期 '+S.issue.date_line+' '+S.issue.issue_no+' · '+seg.length+' 句 = 开场 1 + 窗口说明 '+(S.script.windowOn?1:0)+' + '+P.news.length+' 资讯卡 + 片尾 1 · 窗口 昨日20:00—今日20:00 · 预览 hash <span class="file">'+ph+'</span> · 页面只读 data.js 与 media/ 成品 · 无渠道 md / 无 SKILL / 无打分筛选 / 无 AI 编排 / 无密钥 · 配乐仅自定义上传';
 }
 function drawSubtitleCanvas(ctx,W,H,cfg,text,ratio){
  if(!cfg.on||!text)return;
@@ -2047,8 +2157,9 @@ $('btnApplySrc').onclick=async()=>{
  S.source.xlsxUrl=$('srcXlsxUrl')?$('srcXlsxUrl').value.trim():'';
  if(t==='snapshot'){
   P.news=JSON.parse(JSON.stringify(__BASE_NEWS));P.cover=JSON.parse(JSON.stringify(__BASE_COVER));
-  S.userImported=false;S.importedPayload=null;
-  S.script.body=P.news.map(n=>n.title+'。'+String(n.summary).replace(/\n/g,'').replace(/\u3000/g,'')).join('\n\n');renderBodyEditors();
+  S.userImported=false;S.importedPayload=null;S.newsView=null;S.script.limit=0;
+  S.script.body=P.news.map(n=>n.title+'。'+String(n.summary).replace(/\n/g,'').replace(/\u3000/g,'')).join('\n\n');
+  syncAllNews();renderBodyEditors();
   S.source.msg='<div class="okbar">已恢复内置快照（'+P.news.length+' 条 + 封面 '+P.cover.length+' 条）。</div>';
  }
  else if(t==='url'){
@@ -2064,8 +2175,9 @@ $('btnApplySrc').onclick=async()=>{
    if(!names.includes(sName)||!names.includes(cName))throw new Error('缺少 sheet「'+sName+'」或「'+cName+'」（实际：'+names.join(' / ')+'）');
    const news=sheetsToNews(sheets[sName]),cover=sheetsToCover(sheets[cName]);
    if(!news.length||!cover.length)throw new Error('解析结果为空（文稿 '+news.length+' / 封面 '+cover.length+'）');
-   P.news=news;P.cover=cover;
+   P.news=news;P.cover=cover;S.newsView=null;S.script.limit=0;
    S.script.body=news.map(n=>n.title+'。'+String(n.summary).replace(/\n/g,'').replace(/\u3000/g,'')).join('\n\n');
+   syncAllNews();
    S.userImported=true;S.importedPayload={news:JSON.parse(JSON.stringify(news)),cover:JSON.parse(JSON.stringify(cover))};
    $('bodyText').value=S.script.body;renderBodyEditors();
    S.card.index=1;$('cardTag').textContent='第 1 / '+news.length+' 张';
@@ -2085,6 +2197,7 @@ $('btnExportSrc').onclick=()=>download('data_source.json',JSON.stringify({
  url:S.source.url,docs_url:S.source.url,xlsx_url:S.source.xlsxUrl||null,
  sheet_script:S.source.sheetScript,sheet_cover:S.source.sheetCover,
  local_path:'source.xlsx',timeout_s:20,on_fail:'stop_and_report',
+ news_limit:S.script.limit||0,
  inline_payload:{news:P.news,cover:P.cover,semantic:buildSemantic()},
  semantic_columns:SEM_COLS.map(x=>x[0]),semantic_mode:'L1',
  news_window:windowCfg(),issue:issueCfg(),
@@ -2105,16 +2218,25 @@ function renderBodyEditors(){
  const box=$('bodyEditors');if(!box)return;
  const items=bodyItems();
  box.innerHTML=items.map((t,i)=>'<div class="itemEdit"><div class="ih"><b>'+String(i+1).padStart(2,'0')+
-  '</b><span>资讯 '+(i+1)+' / '+items.length+'</span></div><textarea data-i="'+i+'" rows="3" spellcheck="false">'+esc(t)+'</textarea></div>').join('');
+  '</b><span>资讯 '+(i+1)+' / '+items.length+'</span><span class="ibgrp">'+
+  '<button type="button" class="ib" data-a="up" data-i="'+i+'"'+(i===0?' disabled':'')+'>↑ 上移</button>'+
+  '<button type="button" class="ib" data-a="down" data-i="'+i+'"'+(i===items.length-1?' disabled':'')+'>↓ 下移</button>'+
+  '<button type="button" class="ib del" data-a="del" data-i="'+i+'">删除</button>'+
+  '</span></div><textarea data-i="'+i+'" rows="3" spellcheck="false">'+esc(t)+'</textarea></div>').join('');
  box.querySelectorAll('textarea').forEach(ta=>{ta.oninput=()=>{
-  const arr=bodyItems();arr[+ta.dataset.i]=ta.value;
+  const i=+ta.dataset.i;__ALL_BODY[i]=ta.value;
+  const arr=bodyItems();arr[i]=ta.value;
   S.script.body=arr.join('\n\n');$('bodyText').value=S.script.body;
   $('scriptFull').textContent=fullText();const seg=segments();
   $('scriptTag').textContent=seg.length+' 段';
   $('scriptStat').textContent='字符 '+fullText().length+' · script_hash '+scriptHash();
   invalidateVoice();drawPlayer();gates();renderSrcMsg();renderStatus();save();
  }});
- $('bodyEditStat').textContent=items.length+' 个独立编辑框 · 每条只念「标题。摘要。」';
+ box.querySelectorAll('button.ib').forEach(b=>b.onclick=()=>{
+  const i=+b.dataset.i,a=b.dataset.a;
+  if(a==='del')delNews(i);else moveNews(i,a==='up'?-1:1);
+ });
+ $('bodyEditStat').textContent=items.length+' 个独立编辑框 · 可删除 / 调序 · 当前只保留前 '+newsLimit()+' 条';
 }
 function scriptInputs(){
  const map=[['openText','opening'],['windowText','windowText'],['closeText','closing']];
@@ -2131,7 +2253,10 @@ $('windowOn').onchange=()=>{S.script.windowOn=$('windowOn').checked;$('scriptFul
  const seg=segments();$('scriptTag').textContent=seg.length+' 段';
  $('scriptStat').textContent='字符 '+fullText().length+' · script_hash '+scriptHash();
  invalidateVoice();drawPlayer();gates();renderSrcMsg();renderWindowState();renderStatus();save()};
-$('btnResetScript').onclick=()=>{S.script=JSON.parse(JSON.stringify(DEF.script));save();render()};
+$('btnResetScript').onclick=()=>{S.script=JSON.parse(JSON.stringify(DEF.script));S.script.limit=0;
+ P.news=JSON.parse(JSON.stringify(__ALL_NEWS));P.cover=JSON.parse(JSON.stringify(__ALL_COVER));
+ S.script.body=P.news.map(n=>n.title+'。'+String(n.summary).replace(/\n/g,'').replace(/\u3000/g,'')).join('\n\n');
+ __ALL_BODY=bodyItems();applyNewsView();save();render()};
 $('btnBodyExpand').onclick=()=>{const b=$('bodyEditors');b.style.maxHeight=b.style.maxHeight==='none'?'430px':'none';
  $('btnBodyExpand').textContent=b.style.maxHeight==='none'?'收起列表':'全部展开'};
 $('btnAutoToday').onclick=()=>{const o=autoIssue(S.issue.issue_no);
@@ -2656,7 +2781,7 @@ $('btnRecordWebM').onclick=async()=>{
  }catch(e){st.innerHTML='<div class="errbar">录制失败：'+esc(e.message)+'。请先「逐句合成到人声轨」，并确认浏览器支持 MediaRecorder。</div>'}
 };
 $('btnLock').onclick=()=>{S.locked=previewHash();$('lockHint').textContent='已锁定 manifest hash '+S.locked+'；此后改动会提示不一致。';save();renderStatus()};
-function manifest(){const seg=segments(),ns=newsStart();return{version:'1.0',source_doc:'今日要闻_'+S.issue.date+'.xlsx',source_url:P.source_url,sheet_script:S.source.sheetScript,sheet_cover:S.source.sheetCover,news_window:windowCfg(),issue:issueCfg(),trigger:triggerCfg(),script_hash:scriptHash(),preview_hash:previewHash(),locked_hash:S.locked,cover_count:coverCount(),export_size:exportSize(),export_format:exportFormat(),script_parts:{opening:S.script.opening,window_note:S.script.windowText,spoken:S.script.windowOn,body_segments:bodyItems().length,closing:S.script.closing},segments:seg.map((t,i)=>({idx:i,type:i===0?'open':(S.script.windowOn&&i===1?'window':(i===seg.length-1?'close':'news')),text:t,card_id:(i>=ns&&i<ns+P.news.length)?(i-ns+1):null,srt:true})),cards:P.news.map((n,i)=>({rank:i+1,title:n.title,lead:n.lead||'',summary:n.summary,sources:n.sources})),cover:coverItems().map(c=>({rank:c.rank,label:c.label,title:c.title,sem:c.sem||{}})),semantic:buildSemantic(),config:{issue:issueCfg(),cover:Object.assign({},S.cover,{alt_bands:S.cover.altBands!==false,item_style:itemStyleCfg()}),card:S.card,voice:voiceCfg(),bgm:bgmCfg(),mix:mixCfg(),subtitle:subtitleCfg(),typewriter:typewriterCfg(),export_size:exportSize()},counts:{segments:seg.length,news_cards:P.news.length,cover_items:coverCount(),subtitles:seg.length,sources:P.news.reduce((a,n)=>a+n.sources.length,0),window_note:S.script.windowOn?1:0},note:'预览零文件产出；锁定后由 Actions 按本 manifest 出片，成品 hash 与预览 hash 不一致须明确提示。'}}
+function manifest(){const seg=segments(),ns=newsStart();return{version:'1.0',news_limit:newsLimit(),source_doc:'今日要闻_'+S.issue.date+'.xlsx',source_url:P.source_url,sheet_script:S.source.sheetScript,sheet_cover:S.source.sheetCover,news_window:windowCfg(),issue:issueCfg(),trigger:triggerCfg(),script_hash:scriptHash(),preview_hash:previewHash(),locked_hash:S.locked,cover_count:coverCount(),export_size:exportSize(),export_format:exportFormat(),script_parts:{opening:S.script.opening,window_note:S.script.windowText,spoken:S.script.windowOn,body_segments:bodyItems().length,closing:S.script.closing},segments:seg.map((t,i)=>({idx:i,type:i===0?'open':(S.script.windowOn&&i===1?'window':(i===seg.length-1?'close':'news')),text:t,card_id:(i>=ns&&i<ns+P.news.length)?(i-ns+1):null,srt:true})),cards:P.news.map((n,i)=>({rank:i+1,title:n.title,lead:n.lead||'',summary:n.summary,sources:n.sources})),cover:coverItems().map(c=>({rank:c.rank,label:c.label,title:c.title,sem:c.sem||{}})),semantic:buildSemantic(),config:{issue:issueCfg(),cover:Object.assign({},S.cover,{alt_bands:S.cover.altBands!==false,item_style:itemStyleCfg()}),card:S.card,voice:voiceCfg(),bgm:bgmCfg(),mix:mixCfg(),subtitle:subtitleCfg(),typewriter:typewriterCfg(),export_size:exportSize()},counts:{segments:seg.length,news_cards:P.news.length,cover_items:coverCount(),subtitles:seg.length,sources:P.news.reduce((a,n)=>a+n.sources.length,0),window_note:S.script.windowOn?1:0},note:'预览零文件产出；锁定后由 Actions 按本 manifest 出片，成品 hash 与预览 hash 不一致须明确提示。'}}
 $('btnExportManifest').onclick=()=>download('render_manifest.json',JSON.stringify(manifest(),null,2),'application/json');
 /* 导出多格式：视频 / 音频 / 字幕 / 图片 / 文稿 / 配置，共用下方唯一主按钮。 */
 const EXPORT_FORMATS={mp4:'视频 MP4',webm:'视频 WebM',mp3:'音频 MP3',wav:'音频 WAV',srt:'字幕 SRT',ass:'字幕 ASS',
@@ -2703,7 +2828,7 @@ function exportByFormat(f){
 }
 if($('expFmt'))$('expFmt').onchange=()=>{S.export_format=$('expFmt').value;save();render()};
 function task(name,target){return{version:'1.0',task:name,target:target,manifest_hash:S.locked||previewHash(),script_hash:scriptHash(),source_url:P.source_url,news_window:windowCfg(),issue:issueCfg(),trigger:triggerCfg(),export_size:exportSize(),cover_count:coverCount(),voice:{mode:S.voice.mode,voice:S.voice.voice,rate:S.voice.rate,volume:S.voice.volume,upload:S.voice.upload,endpoint:P.voice_endpoint,volume_filter:'ffmpeg volume='+S.voice.volume.toFixed(2)},bgm:bgmCfg(),mix:mixCfg(),voice:voiceCfg(),subtitle:subtitleCfg(),typewriter:typewriterCfg(),cover:S.cover,card:S.card,note:'原型不产生真实媒体文件：这是合成任务清单，首次 Actions 按 render_manifest.json 出片后才生成目标文件。'}}
-function videoTarget(){return exportSize()==='landscape'?'今日要闻速览_横版16比9.mp4':'今日要闻速览_竖版9比16.mp4'}
+function videoTarget(){return '今日要闻速览_'+enameOf(exportSize())+'.mp4'}
 [['btnExpMp3','导出MP3任务.json','今日要闻速览_播报.mp3'],
  ['btnExpSrt','导出SRT任务.json','今日要闻速览_字幕.srt']].forEach(([id,fn,t])=>$(id).onclick=()=>{
   download(fn,JSON.stringify(task(t.split('_').pop(),t),null,2),'application/json');
@@ -2744,10 +2869,11 @@ function sheetsToCover(rows){const ti=_hidx(rows,'标题'),li=_hidx(rows,'分类
 /* 同源静态配置：部署后读仓库里的 data_source.json / cover_theme.json / media/timeline.json，设置与真实时长自动生效 */
 (async()=>{
  try{const r=await fetch('data_source.json?ts='+Date.now());if(r.ok){const c=await r.json();
-  if(!S.userImported&&c.inline_payload&&c.inline_payload.news&&c.inline_payload.news.length){
+  if(!S.userImported&&!S.newsView&&c.inline_payload&&c.inline_payload.news&&c.inline_payload.news.length){
    P.news=c.inline_payload.news;P.cover=c.inline_payload.cover||P.cover;
    S.script.body=P.news.map(n=>n.title+'。'+String(n.summary).replace(/\n/g,'').replace(/\u3000/g,'')).join('\n\n');$('bodyText').value=S.script.body;
-   renderBodyEditors();}
+   if(Object.prototype.hasOwnProperty.call(c,'news_limit'))S.script.limit=+(c.news_limit||0);
+   syncAllNews();applyNewsView();renderBodyEditors();}
   if(!S.userImported&&c.cover_count)S.cover.count=+c.cover_count;
   if(!S.userImported&&c.cover_theme){const x=c.cover_theme;
    if(x.theme)S.cover.theme=x.theme;if(x.tpl)S.cover.tpl=x.tpl;if(x.size){S.cover.size=x.size;S.export_size=x.size;S.card.size=x.size}
@@ -2799,7 +2925,7 @@ window.__daily={state:S,api:{render,gates,scriptHash,previewHash,fullText,segmen
     ds.textContent='数据来源：'+window.__DATA_SOURCE__+(t?' · 重建 '+t:' · 随包快照');
   }
   function vf(){var st=window.__daily&&window.__daily.get();var s=st&&(st.export_size||(st.cover&&st.cover.size));
-    return s==='landscape'?'media/今日要闻_横版16比9.mp4':'media/今日要闻_竖版9比16.mp4'}
+    return 'media/今日要闻_'+enameOf(s||'portrait')+'.mp4'}
   var REAL={
     btnExpMp3:'media/今日播报.mp3',
     btnExpSrt:'media/今日要闻.srt',

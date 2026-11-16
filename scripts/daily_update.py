@@ -69,6 +69,7 @@ def main():
             'cover_theme': cfg.get('cover_theme') or {},
             'cover_count': cfg.get('cover_count') or (cfg.get('cover_theme') or {}).get('count') or 10,
             'video_card_theme': cfg.get('video_card_theme') or {},
+             'news_limit': cfg.get('news_limit') or 0,
              'inline_payload': cfg.get('inline_payload'),
              'docs_url': cfg.get('docs_url'),
             'rebuilt_at': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()),
@@ -100,14 +101,14 @@ def main():
         cv['issue'] = src_cfg.get('issue') or p.get('issue_cfg')
         cv['cover_header'] = src_cfg.get('cover_header') or p.get('cover_header')
         esize = src_cfg.get('export_size') or 'portrait'
-        ename = '竖版9比16' if esize == 'portrait' else '横版16比9'
+        ename = R.ENAME.get(esize, '竖版9比16')
         R.render_cover(root, p, dict(cv, size=esize),
                        os.path.join(root, 'media', '封面_%s.png' % ename),
                        os.path.join(root, '.cache', 'cover_meta_%s.json' % esize))
         status['timings']['render_cover_s'] = round(time.time() - t, 3)
         status['export_size'] = esize
         log('封面：%s（%s），显示 %d 条 / %d 行，报头三项=%s' %
-            (ename, R.SIZES[esize], cv['count'], math.ceil(cv['count'] / (2 if esize == 'landscape' and cv['count'] >= 2 else 1)), cv['cover_header']))
+            (ename, R.SIZES[esize], cv['count'], math.ceil(cv['count'] / (2 if R.is_land(esize) and cv['count'] >= 2 else 1)), cv['cover_header']))
 
         if not args.no_media:
             import produce as PD
