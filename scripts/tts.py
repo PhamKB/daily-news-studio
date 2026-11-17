@@ -245,15 +245,15 @@ def build_voice(root, manifest, mode=None):
 
 
 SUB_CHUNK_MAX = 30
-_ACTIVE_LINES = 2   # r23：由 build_srt / build_ass 按 subtitle.max_lines 设置
+_ACTIVE_LINES = 2   # r28：由 build_srt / build_ass 按 subtitle.max_lines（1–5）设置
 
 
 def subtitle_chunks(text):
     """把一句长口播切成短字幕片段：优先在句末标点切；片段长度随显示行数变化。
-    r23：1 行整句（页面横向滚动）/ 2 行 30 字 / 3 行 45 字，与页面 subChunks() 同源。"""
+    r28：1–5 行分别按 15/30/45/60/75 字分片，与页面 subChunks() 同源。"""
     s = re.sub(r'[\r\n]+', '', str(text or ''))
-    ml = max(1, min(3, int(_ACTIVE_LINES)))
-    # r27：1 行不再整句横向滚动，按 15 字分片；2/3 行 30/45 字，行数真生效
+    ml = max(1, min(5, int(_ACTIVE_LINES)))
+    # r28：1 行不再整句横向滚动；1–5 行按 15×行数 字分片，行数真生效
     cap = int(round(SUB_CHUNK_MAX * ml / 2))
     out, cur = [], ''
     for ch in s:
@@ -272,7 +272,7 @@ def subtitle_chunks(text):
 def chunk_lines(text, ml):
     """r23：ASS WrapStyle=2 不自动折行，按行数硬插换行，行数设置才真正生效。"""
     s = str(text or '')
-    ml = max(1, min(3, int(ml)))
+    ml = max(1, min(5, int(ml)))
     if ml == 1 or len(s) < 4:
         return s
     per = max(1, int(math.ceil(len(s) / ml)))
@@ -284,7 +284,7 @@ def build_srt(root, voice, manifest, path):
     sub = manifest['config']['subtitle']
     if not sub.get('on'):
         return None
-    _ACTIVE_LINES = max(1, min(3, int(sub.get('max_lines', 2))))
+    _ACTIVE_LINES = max(1, min(5, int(sub.get('max_lines', 2))))
 
     def fmt(x):
         ms = int(round(x * 1000))

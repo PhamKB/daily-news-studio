@@ -362,14 +362,17 @@ def sub_style(sub, W, H):
     border = 1 if style == 'none' else 3
     back = {'none': '&H00000000', 'black': '&H80000000',
             'navy': '&H8C2A1B0D', 'accent': '&H8C2F43E6'}.get(style, '&H80000000')
-    lines = max(1, min(3, int(sub.get('max_lines', 2))))
+    lines = max(1, min(5, int(sub.get('max_lines', 2))))
     margin_v = int(H * (0.05 + 0.012 * max(0, lines - 1)))
-    return ("FontName=%s,FontSize=%d,PrimaryColour=%s,OutlineColour=%s,"
-            "BackColour=&H80000000,BorderStyle=%d,Outline=2,Shadow=0,Alignment=%d,MarginV=%d"
-            % (sub.get('font', 'WenQuanYi Micro Hei'), fs,
-               _ass_color(sub.get('color', '#FFFFFF')),
-               _ass_color(sub.get('outline_color', '#0d1b2a')),
-               border, align, margin_v).replace('&H80000000', back))
+    # r28：旧写法把 .replace() 绑在 % 右侧的元组上，ASS 缺失时 force_style 会直接抛
+    # AttributeError（'tuple' object has no attribute 'replace'），导致「关掉打字机后出片失败」。
+    s = ("FontName=%s,FontSize=%d,PrimaryColour=%s,OutlineColour=%s,"
+         "BackColour=&H80000000,BorderStyle=%d,Outline=2,Shadow=0,Alignment=%d,MarginV=%d"
+         % (sub.get('font', 'WenQuanYi Micro Hei'), fs,
+            _ass_color(sub.get('color', '#FFFFFF')),
+            _ass_color(sub.get('outline_color', '#0d1b2a')),
+            border, align, margin_v))
+    return s.replace('&H80000000', back)
 
 
 # ------------------------------------------------------------------ 视频

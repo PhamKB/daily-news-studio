@@ -11,5 +11,6 @@
     "note": "逐字只作用于字幕；卡片帧始终完整。卡片背景图由 cdArtOn 开关控制，默认关。"
   },
   "category_art": "off",
-  "category_strength": "light"
+  "category_strength": "light",
+  "note": "逐字只作用于视频帧字幕层；卡片帧始终完整。卡片背景图由 cdArtOn 开关控制，默认关。字幕行数 1–5 下拉同源。"
 }

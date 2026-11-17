@@ -179,7 +179,7 @@ def subtitle_safe_u(cfg):
     c = cfg if isinstance(cfg, dict) else {}
     if not c.get('on') or not c.get('burn_in'):
         return 0
-    lines = max(1, min(3, int(c.get('max_lines', 2))))
+    lines = max(1, min(5, int(c.get('max_lines', 2))))
     fs = int(c.get('font_size', 44))
     return int(lines * fs * 1.5 + fs * .9)
 

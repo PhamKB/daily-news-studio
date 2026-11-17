@@ -17,10 +17,10 @@
     "statement": "今日要闻为昨日 20:00 到今日 20:00 的资讯。"
   },
   "issue": {
-    "date": "2026-11-17",
-    "weekday": "星期二",
-    "date_cn": "2026年11月17日，星期二",
-    "date_line": "2026-11-17 星期二",
+    "date": "2026-11-16",
+    "weekday": "星期一",
+    "date_cn": "2026年11月16日，星期一",
+    "date_line": "2026-11-16 星期一",
     "issue_no": "第01期",
     "notes": ""
   },
@@ -30,7 +30,7 @@
     "show_date": true,
     "show_issue": true
   },
-  "opening": "早上好，今天是2026年11月17日，星期二。以下为今日要闻速览。",
+  "opening": "早上好，今天是2026年11月16日，星期一。以下为今日要闻速览。",
   "closing": "以上是今日要闻速览，感谢收听，下期见。",
   "window_on": true,
   "voice": {
@@ -65,7 +65,7 @@
     "position": "bottom",
     "background": true,
     "font": "WenQuanYi Micro Hei",
-    "note": "硬字幕 + mov_text 软轨 + 独立 SRT；开启打字机时硬字幕按 ASS 卡拉OK 逐字显现",
+    "note": "硬字幕 + mov_text 软轨 + 独立 SRT；显示行数 1–5 下拉；打字机默认开启，视频帧字幕逐字显现",
     "typewriter": true,
     "background_style": "black",
     "max_lines": 2,
@@ -78,15 +78,15 @@
     "gap": "airy",
     "wm": {
       "on": false,
-      "text": "今日要闻速览 · 2026-11-17",
+      "text": "今日要闻速览 · 2026-11-16",
       "pos": "bottom_right",
       "alpha": 0.12
     },
     "issue": {
-      "date": "2026-11-17",
-      "weekday": "星期二",
-      "date_cn": "2026年11月17日，星期二",
-      "date_line": "2026-11-17 星期二",
+      "date": "2026-11-16",
+      "weekday": "星期一",
+      "date_cn": "2026年11月16日，星期一",
+      "date_line": "2026-11-16 星期一",
       "issue_no": "第01期",
       "notes": ""
     },

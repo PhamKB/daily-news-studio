@@ -639,7 +639,7 @@ def main():
     ck('页面默认值与内嵌 payload 已改今日要闻速览',
        'value="今日要闻速览"' in html and '"title": "今日要闻速览"' in html)
     ck('旧浏览器状态自动迁移，换包刷新不会残留旧品牌名',
-       "const STATE_VER='r27-1'" in html and "const OLD_BRAND='每日'+'要闻速览'" in html
+       "const STATE_VER='r28-1'" in html and "const OLD_BRAND='每日'+'要闻速览'" in html
        and "S.cover.title=DEF.cover.title" in html
        and "split(OLD_BRAND).join('今日要闻速览')" in html)
 
@@ -713,14 +713,14 @@ def main():
        and 'for chunk in chunks:' in tts_src
        and 'subChunks(txt)' in html and 'subChunkAt(text,ratio)' in html
                and 'wrapText(ctx,shown,maxW,ml)' in html
-        and 'const ml=Math.max(1,Math.min(3,+cfg.max_lines||2))' in html)
+        and 'const ml=Math.max(1,Math.min(5,+cfg.max_lines||2))' in html)
     ck('片尾帧顺序行盒登记 bbox 且做重叠自检',
        'overlap' in prod and 'outro_meta_' in prod and 'boxes' in prod)
     ck('生产段 opening/closing 归一化，片尾不 fallback 成窗口说明',
        "'opening': 'open'" in prod and "'closing': 'close'" in prod
        and 'kind_norm' in prod and 'labels.get(kind_norm' in prod
        and "if kind_norm == 'close'" in prod)
-    ck('旧浏览器状态迁移到 r25-1', "const STATE_VER='r27-1'" in html
+    ck('旧浏览器状态迁移到 r28-1', "const STATE_VER='r28-1'" in html
        and 'itemFont' in html and "if(o.__ver!==STATE_VER)" in html)
 
     ck('stillimage 调优', "'-tune', 'stillimage'" in prod)
@@ -855,12 +855,17 @@ def main():
        ' const W=sz.w,H=sz.h;' in html and "if($('plCanvas').width!==_sz.w" in html
        and "ctx.scale(PW/540,PH/960)" in html
        and 'band:window.__cardDrawSubBand' in html)
-    ck('字幕底色四选一与显示行数 1/2/3',
-       all(x in html for x in ('id="subLines"', 'value="none"', 'value="navy"', 'value="accent"',
-                               'const SUB_BG=', 'function subMaxLines()', 'function subtitleSafeU()')))
-    ck('字幕配置导出同源',
+    ck('字幕底色四选一与显示行数下拉 1–5（5 个选项）',
+       all(x in html for x in ('<select id="subLines"', 'value="1">1 行', 'value="2" selected',
+                               'value="3">3 行', 'value="4">4 行', 'value="5">5 行',
+                               'value="none"', 'value="navy"', 'value="accent"',
+                               'const SUB_BG=', 'function subMaxLines()', 'function subtitleSafeU()'))
+       and 'chips($(\'subLines\')' not in html)
+    ck('字幕配置导出同源（行数上限 5）',
        "background_style:S.subtitle.background_style" in html
-       and "max_lines:Math.max(1,Math.min(3,+S.subtitle.max_lines||2))" in html)
+       and "max_lines:Math.max(1,Math.min(5,+S.subtitle.max_lines||2))" in html
+       and '$(\'subLines\').value=String(subMaxLines())' in html
+       and "'subLines'" in html)
     ck('字幕安全带前后端同源且不压来源',
        'const subSafeU=subtitleSafeU(),subSafe=Math.min(Math.round(subSafeU*H/1920)' in html
        and 'safe_u = min(int(SUBTITLE_SAFE_U * H / 1920.0)' in rend
@@ -870,7 +875,8 @@ def main():
        and "R.SUBTITLE_SAFE_U = R.subtitle_safe_u(src_cfg.get('subtitle'))" in _dpy)
     ck('服务端字幕样式支持底色与行数',
        "background_style" in prod and "max_lines" in prod and "'navy': '&H8C2A1B0D'" in prod)
-    ck('STATE_VER 升级且旧状态迁移', "const STATE_VER='r27-1'" in html and 'S.shared={theme:' in html)
+    ck('STATE_VER 升级且旧状态迁移', "const STATE_VER='r28-1'" in html and 'S.shared={theme:' in html
+       and 'S.typewriter.on=true' in html)
     # ---- r23 防回归 ----
     ck('r23 文稿改标题/删除/调序/条数后封面同源重绘',
        '__ALL_COVER[k].title' in html and 'drawCover();docPreview();' in html
@@ -882,12 +888,39 @@ def main():
     ck('r23 画面不再显示字幕安全区标识',
        "fillText('字幕安全区'" not in html and "'字幕安全区'" not in rend
        and '字幕占位：' in html)
-    ck('r27 字幕行数真生效（1行不滚动15字 / 2行30字 / 3行45字，前后端同源）',
-       "if(ml===1)return[s||' ']" not in html and 'const scroll=false' in html
-       and "sub.style.transform='none'" in html
+    ck('r28 字幕行数 1–5 全链路真生效（页面 / DOM / SRT / ASS / 服务端同源）',
+       "if(ml===1)return[s||' ']" not in html and "sub.style.transform='none'" in html
        and 'const cap=Math.round(SUB_CHUNK_MAX*ml/2)' in html
+       and 'function splitSubLines(' in html and "sub.style.whiteSpace='pre-line'" in html
+       and 'Math.min(5,+S.subtitle.max_lines||2)' in html
+       and 'Math.min(5,+cfg.max_lines||2)' in html
        and '_ACTIVE_LINES' in tts_src and 'cap = int(round(SUB_CHUNK_MAX * ml / 2))' in tts_src
+       and 'min(5, int(_ACTIVE_LINES))' in tts_src and 'min(5, int(sub.get(\'max_lines\', 2)))' in tts_src
+       and 'min(5, int(ml))' in tts_src
+       and 'min(5, int(sub.get(\'max_lines\', 2)))' in prod
+       and 'min(5, int(c.get(\'max_lines\', 2)))' in rend
        and 'chunk_lines(chunk, _ACTIVE_LINES)' in tts_src and 'j % per == 0' in tts_src)
+    ck('r28 force_style 路径可用：sub_style 返回字符串（元组 replace 旧 bug 已修）',
+       "return s.replace('&H80000000', back)" in prod
+       and 'margin_v).replace(' not in prod
+       and 's = ("FontName=' in prod)
+    ck('r28 BGM 面板去掉重复「混音音量」，混声仍只有三项',
+       'id="bgmVol"' not in html and 'id="bgmVolV"' not in html
+       and '混音音量</label>' not in html
+       and all(('id="%s"' % x) in html for x in ('mixVoice', 'mixBgm', 'mixMaster'))
+       and "S.bgm.volume=+B.value/100" in html)
+    ck('r28 音频上传支持拖拽（文件选择与 drop 同一处理函数）',
+       'id="bgmDrop"' in html and 'function applyBgmFile(' in html
+       and 'dataTransfer.files' in html and "dz.addEventListener('drop'" in html
+       and "$('bgmFile').onchange=()=>applyBgmFile" in html)
+    ck('r28 视频帧字幕逐字恢复（框定字现、真实进度、默认开启）',
+       'shown_chars:shown.length' in html and 'full_chars:cw.text.length' in html
+       and 'const fullLines=wrapText(ctx,cw.text,maxW,ml)' in html
+       and 'const shown=tw?cw.text.slice(0,Math.ceil(cw.text.length*cw.inner)):cw.text' in html
+       and 'typewriter:tw' in html
+       and mf['config']['typewriter'].get('on') is True
+       and "S.typewriter.on=true" in html
+       and 'leadRatio' in html)
     ck('r23 片尾标题一行不换行（前后端同源）',
        'wrapText(ctx,label,460,2)' not in html and 'while(bigFs>36' in html
        and 'while big > int(52 * u)' in prod and 'lines = [label]' in prod
@@ -919,7 +952,7 @@ def main():
        and 'drawCategoryArt(ctx,W,H,c,S.card.category_art' in html
        and "category_art:S.card.category_art||'off'" in html)
     ck('r25 页面有可见构建标记，Ctrl+F5 后可确认线上是否已换包',
-       'r27 · 11-16' in html)
+       'r28 · 11-17' in html)
     ck('r25 分类纹样下移到中下部留白区，前后端同源且不再压标题与摘要',
        'cy=H*.66' in html and 'int(H * 0.66)' in rend
        and 'Math.min(W,H)*.17' in html and 'int(min(W, H) * 0.17)' in rend
