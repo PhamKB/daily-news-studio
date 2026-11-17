@@ -253,8 +253,7 @@ def subtitle_chunks(text):
     r23：1 行整句（页面横向滚动）/ 2 行 30 字 / 3 行 45 字，与页面 subChunks() 同源。"""
     s = re.sub(r'[\r\n]+', '', str(text or ''))
     ml = max(1, min(3, int(_ACTIVE_LINES)))
-    if ml == 1:
-        return [s or ' ']
+    # r27：1 行不再整句横向滚动，按 15 字分片；2/3 行 30/45 字，行数真生效
     cap = int(round(SUB_CHUNK_MAX * ml / 2))
     out, cur = [], ''
     for ch in s:
@@ -298,15 +297,23 @@ def build_srt(root, voice, manifest, path):
     for i, s in enumerate(voice['segments'], 1):
         st, en = t, t + s['dur']
         if voice['mode'] != 'upload':
+            full = s['text']
             text = s.get('sub_text') or s['text']
         else:
             m = manifest['segments'][i - 1]
+            full = m['text']
             text = m.get('sub_text') or m['text']
+        # r27：字幕不含标题，但人声念完整句（标题。摘要）。按标题字数占比
+        # 扣掉这段朗读时长，字幕从人声念完标题那一刻才开始，逐字才同步。
+        lead = max(0, len(str(full)) - len(str(text)))
+        lead_dur = s['dur'] * lead / max(1, len(str(full)))
+        st_sub = st + lead_dur
+        dur_sub = max(0.2, s['dur'] - lead_dur)
         chunks = subtitle_chunks(text)
         tot = sum(len(c) for c in chunks) or 1
-        ct = st
+        ct = st_sub
         for chunk in chunks:
-            cd = s['dur'] * len(chunk) / tot
+            cd = dur_sub * len(chunk) / tot
             idx += 1
             lines.append('%d\n%s --> %s\n%s\n' % (idx, fmt(ct), fmt(ct + cd),
                                                   chunk_lines(chunk, _ACTIVE_LINES)))
@@ -366,15 +373,21 @@ def build_ass(root, voice, manifest, path, W, H):
         st, en = t, t + s['dur']
         t = en
         if voice['mode'] != 'upload':
+            full = s['text']
             text = s.get('sub_text') or s['text']
         else:
             m = manifest['segments'][i]
+            full = m['text']
             text = m.get('sub_text') or m['text']
+        lead = max(0, len(str(full)) - len(str(text)))
+        lead_dur = s['dur'] * lead / max(1, len(str(full)))
+        st_sub = st + lead_dur
+        dur_sub = max(0.2, s['dur'] - lead_dur)
         chunks = subtitle_chunks(text)
         tot = sum(len(c) for c in chunks) or 1
-        ct = st
+        ct = st_sub
         for chunk in chunks:
-            dur = s['dur'] * len(chunk) / tot
+            dur = dur_sub * len(chunk) / tot
             ce = ct + dur
             chars = [c for c in chunk if c not in ('\r', '\n')]
             if not chars:

@@ -811,9 +811,10 @@ def render_card(root, card, cfg, out_path, meta_path=None, reveal=1.0):
     issue_s = SRC.norm_issue(str(hdr.get('issue') or '第01期'))
     show_t = bool(hdr.get('show_title', True)); show_d = bool(hdr.get('show_date', True))
     show_i = bool(hdr.get('show_issue', True))
-    rv = max(0.0, min(1.0, float(reveal)))
-    ttl = card['title'] if rv >= 1 else card['title'][:max(0, int(round(len(card['title']) * rv)))]
-    raw_smy = card['summary'] if rv >= 1 else card['summary'][:max(0, int(round(len(card['summary']) * rv)))]
+    # r27：卡片帧标题与摘要始终完整，逐字只作用于字幕层（不再出现「标题出一半」）
+    rv = 1.0
+    ttl = str(card['title'])
+    raw_smy = str(card['summary'])
 
     # 模板不画框/底：v11 版式只有纯背景 + 两条横线，避免与横线叠加
     if tpl == 'frame_headline':

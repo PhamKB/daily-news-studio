@@ -639,7 +639,7 @@ def main():
     ck('页面默认值与内嵌 payload 已改今日要闻速览',
        'value="今日要闻速览"' in html and '"title": "今日要闻速览"' in html)
     ck('旧浏览器状态自动迁移，换包刷新不会残留旧品牌名',
-       "const STATE_VER='r25-1'" in html and "const OLD_BRAND='每日'+'要闻速览'" in html
+       "const STATE_VER='r27-1'" in html and "const OLD_BRAND='每日'+'要闻速览'" in html
        and "S.cover.title=DEF.cover.title" in html
        and "split(OLD_BRAND).join('今日要闻速览')" in html)
 
@@ -720,7 +720,7 @@ def main():
        "'opening': 'open'" in prod and "'closing': 'close'" in prod
        and 'kind_norm' in prod and 'labels.get(kind_norm' in prod
        and "if kind_norm == 'close'" in prod)
-    ck('旧浏览器状态迁移到 r25-1', "const STATE_VER='r25-1'" in html
+    ck('旧浏览器状态迁移到 r25-1', "const STATE_VER='r27-1'" in html
        and 'itemFont' in html and "if(o.__ver!==STATE_VER)" in html)
 
     ck('stillimage 调优', "'-tune', 'stillimage'" in prod)
@@ -870,7 +870,7 @@ def main():
        and "R.SUBTITLE_SAFE_U = R.subtitle_safe_u(src_cfg.get('subtitle'))" in _dpy)
     ck('服务端字幕样式支持底色与行数',
        "background_style" in prod and "max_lines" in prod and "'navy': '&H8C2A1B0D'" in prod)
-    ck('STATE_VER 升级且旧状态迁移', "const STATE_VER='r25-1'" in html and 'S.shared={theme:' in html)
+    ck('STATE_VER 升级且旧状态迁移', "const STATE_VER='r27-1'" in html and 'S.shared={theme:' in html)
     # ---- r23 防回归 ----
     ck('r23 文稿改标题/删除/调序/条数后封面同源重绘',
        '__ALL_COVER[k].title' in html and 'drawCover();docPreview();' in html
@@ -882,9 +882,9 @@ def main():
     ck('r23 画面不再显示字幕安全区标识',
        "fillText('字幕安全区'" not in html and "'字幕安全区'" not in rend
        and '字幕占位：' in html)
-    ck('r23 字幕行数真生效（1行滚动 / 2行30字 / 3行45字，前后端同源）',
-       "if(ml===1)return[s||' ']" in html and 'const scroll=(ml===1)' in html
-       and 'shift=Math.max(0,wid-maxW)*cw.inner' in html
+    ck('r27 字幕行数真生效（1行不滚动15字 / 2行30字 / 3行45字，前后端同源）',
+       "if(ml===1)return[s||' ']" not in html and 'const scroll=false' in html
+       and "sub.style.transform='none'" in html
        and 'const cap=Math.round(SUB_CHUNK_MAX*ml/2)' in html
        and '_ACTIVE_LINES' in tts_src and 'cap = int(round(SUB_CHUNK_MAX * ml / 2))' in tts_src
        and 'chunk_lines(chunk, _ACTIVE_LINES)' in tts_src and 'j % per == 0' in tts_src)
@@ -907,21 +907,37 @@ def main():
        and "'sub_text': _sub_text(s, i)" in src
        and "text = s.get('sub_text') or s['text']" in tts_src
        and 'no_title:S.subtitle.no_title!==false' in html
-       and "const sub=$('plSub'),full=subtitleSegments()[i]||''" in html)
+       and "const sub=$('plSub'),full=subtitleSegments()[i]||'',fullSeg=seg[i]||''" in html)
     ck('r25 字幕逐句时长按真实音轨 offsets 差分，不再与估算时长错位',
        'MERGED.offsets.length===seg.length' in html
        and '(i+1<o.length?o[i+1]:(MERGED.dur||0))-x' in html)
-    ck('r25 分类标签纹样背景前后端同源且可关闭',
+    ck('r27 分类标签纹样背景前后端同源，且由「卡片背景图」开关控制（默认关）',
        'CAT_ART_RULES' in rend and 'def draw_category_art(' in rend
        and 'const CAT_ART_RULES=' in html and 'function drawCategoryArt(' in html
-       and "category_art:'light'" in html
-       and 'drawCategoryArt(ctx,W,H,c,S.card.category_art' in html)
+       and 'id="cdArtOn"' in html
+       and "category_art:'off'" in html
+       and 'drawCategoryArt(ctx,W,H,c,S.card.category_art' in html
+       and "category_art:S.card.category_art||'off'" in html)
     ck('r25 页面有可见构建标记，Ctrl+F5 后可确认线上是否已换包',
-       'r25 · 11-16' in html)
+       'r27 · 11-16' in html)
     ck('r25 分类纹样下移到中下部留白区，前后端同源且不再压标题与摘要',
        'cy=H*.66' in html and 'int(H * 0.66)' in rend
        and 'Math.min(W,H)*.17' in html and 'int(min(W, H) * 0.17)' in rend
        and 'cy=H*.30' not in html and 'int(H * 0.30)' not in rend)
+
+    ck('r27 页面片头直接画本期封面（不再自建资讯窗口页）',
+       "drawCover($('plCanvas'))" in html and "if(i===0){" in html
+       and "kind:'open',cover:true" in html)
+    ck('r27 卡片标题与摘要始终完整，逐字只作用于字幕层',
+       'const title=String(c.title)' in html and 'const raw=String(c.summary)' in html
+       and "slice(0,Math.ceil(String(c.title).length*rv))" not in html
+       and "ttl = str(card['title'])" in rend
+       and "drawCard($('plCanvas'),cardIdx,true,1)" in html)
+    ck('r27 字幕起始对齐人声：扣掉标题朗读时长（页面 / SRT / ASS 同源）',
+       'leadRatio' in html and 'lead_dur' in tts_src and 'st_sub' in tts_src)
+    ck('r27 卡片背景图开关：开才画、关纯色（前后端与导出同源）',
+       'id="cdArtOn"' in html and "category_art:S.card.category_art||'off'" in html
+       and '"category_art": "off"' in open(os.path.join(ROOT, 'video_card_theme.json'), encoding='utf-8').read())
 
     bad = [c for c in CHECKS if not c['ok']]
     print('共 %d 项，失败 %d 项' % (len(CHECKS), len(bad)))

@@ -1052,7 +1052,7 @@
       "tpl": "frame_card",
       "theme": "deep_blue",
       "size": "portrait",
-      "category_art": "light",
+      "category_art": "off",
       "category_strength": "light",
       "version": "1.0",
       "typewriter": {
@@ -1060,7 +1060,7 @@
         "target": "subtitle",
         "ms_per_char": 55,
         "max_steps": 8,
-        "note": "打字机作用位置可设为字幕 / 视频帧 / 两者；预览同步演示。"
+        "note": "逐字只作用于字幕；卡片帧始终完整。卡片背景图由 cdArtOn 开关控制，默认关。"
       }
     }
   },

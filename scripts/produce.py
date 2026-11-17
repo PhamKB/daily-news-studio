@@ -326,7 +326,7 @@ def frames_for(root, manifest, voice, size, tw):
             p = os.path.join(outdir, 'f%03d.png' % seq)
             ratio = j / steps
             if card:
-                R.render_card(root, card, cfg, p, reveal=ratio)
+                R.render_card(root, card, cfg, p)
             elif s['kind'] == 'opening' and opening_from_cover(root, size, p, manifest):
                 pass
             else:
