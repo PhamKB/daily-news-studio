@@ -3,11 +3,11 @@
   "version": "1.0",
   "timings": {
     "fetch_s": 0.0,
-    "build_s": 0.007,
-    "render_cover_s": 0.131,
-    "tts_s": 10.225,
-    "mux_s": 126.427,
-    "total_s": 136.796
+    "build_s": 0.015,
+    "render_cover_s": 0.146,
+    "tts_s": 11.014,
+    "mux_s": 137.734,
+    "total_s": 148.918
   },
   "errors": [],
   "data_origin": "inline_payload（data_source.json 内联数据，来自腾讯文档/本地 xlsx）",
@@ -56,7 +56,7 @@
           1080,
           1920
         ],
-        "bytes": 20144392,
+        "bytes": 20125709,
         "path": "media/今日要闻_竖版9比16.mp4"
       }
     },
