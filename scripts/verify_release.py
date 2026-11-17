@@ -639,7 +639,7 @@ def main():
     ck('页面默认值与内嵌 payload 已改今日要闻速览',
        'value="今日要闻速览"' in html and '"title": "今日要闻速览"' in html)
     ck('旧浏览器状态自动迁移，换包刷新不会残留旧品牌名',
-       "const STATE_VER='r28-1'" in html and "const OLD_BRAND='每日'+'要闻速览'" in html
+       "const STATE_VER='r29-1'" in html and "const OLD_BRAND='每日'+'要闻速览'" in html
        and "S.cover.title=DEF.cover.title" in html
        and "split(OLD_BRAND).join('今日要闻速览')" in html)
 
@@ -712,7 +712,7 @@ def main():
        'chunks = subtitle_chunks(text)' in tts_src
        and 'for chunk in chunks:' in tts_src
        and 'subChunks(txt)' in html and 'subChunkAt(text,ratio)' in html
-               and 'wrapText(ctx,shown,maxW,ml)' in html
+               and 'subLayoutRows(cw.text,ml)' in html
         and 'const ml=Math.max(1,Math.min(5,+cfg.max_lines||2))' in html)
     ck('片尾帧顺序行盒登记 bbox 且做重叠自检',
        'overlap' in prod and 'outro_meta_' in prod and 'boxes' in prod)
@@ -720,7 +720,7 @@ def main():
        "'opening': 'open'" in prod and "'closing': 'close'" in prod
        and 'kind_norm' in prod and 'labels.get(kind_norm' in prod
        and "if kind_norm == 'close'" in prod)
-    ck('旧浏览器状态迁移到 r28-1', "const STATE_VER='r28-1'" in html
+    ck('旧浏览器状态迁移到 r29-1', "const STATE_VER='r29-1'" in html
        and 'itemFont' in html and "if(o.__ver!==STATE_VER)" in html)
 
     ck('stillimage 调优', "'-tune', 'stillimage'" in prod)
@@ -875,7 +875,7 @@ def main():
        and "R.SUBTITLE_SAFE_U = R.subtitle_safe_u(src_cfg.get('subtitle'))" in _dpy)
     ck('服务端字幕样式支持底色与行数',
        "background_style" in prod and "max_lines" in prod and "'navy': '&H8C2A1B0D'" in prod)
-    ck('STATE_VER 升级且旧状态迁移', "const STATE_VER='r28-1'" in html and 'S.shared={theme:' in html
+    ck('STATE_VER 升级且旧状态迁移', "const STATE_VER='r29-1'" in html and 'S.shared={theme:' in html
        and 'S.typewriter.on=true' in html)
     # ---- r23 防回归 ----
     ck('r23 文稿改标题/删除/调序/条数后封面同源重绘',
@@ -913,10 +913,20 @@ def main():
        'id="bgmDrop"' in html and 'function applyBgmFile(' in html
        and 'dataTransfer.files' in html and "dz.addEventListener('drop'" in html
        and "$('bgmFile').onchange=()=>applyBgmFile" in html)
-    ck('r28 视频帧字幕逐字恢复（框定字现、真实进度、默认开启）',
+    ck('r29 作用位置含「视频帧逐字」且 target 真被渲染读取',
+       '<option value="frame" selected>视频帧逐字</option>' in html
+       and "twFrm=(S.typewriter.target||'frame')==='frame'" in html
+       and 'enabled:twFrm' in html and "sub.textContent=twFrm?'':domLines.join" in html)
+    ck('r29 字幕正文取表格摘要而非标题，标题无句号也不回退',
+       'P.news[j].summary' in html and "const k=t.search(/[。！？!?]/)" in html)
+    ck('r29 ASS 1-5 行不再被夹到 3',
+       "min(5, int(sub.get('max_lines', 2)))" in tts_src
+       and 'min(3, int(sub.get' not in tts_src)
+    ck('r29 视频帧字幕真进帧 + 1-5 行固定版式（作用位置可选）',
        'shown_chars:shown.length' in html and 'full_chars:cw.text.length' in html
-       and 'const fullLines=wrapText(ctx,cw.text,maxW,ml)' in html
-       and 'const shown=tw?cw.text.slice(0,Math.ceil(cw.text.length*cw.inner)):cw.text' in html
+       and 'const fullLines=subLayoutRows(cw.text,ml)' in html
+       and 'const n=tw?Math.ceil(cw.text.length*cw.inner):cw.text.length' in html
+       and 'const lines=fullLines.map(' in html
        and 'typewriter:tw' in html
        and mf['config']['typewriter'].get('on') is True
        and "S.typewriter.on=true" in html
@@ -952,7 +962,7 @@ def main():
        and 'drawCategoryArt(ctx,W,H,c,S.card.category_art' in html
        and "category_art:S.card.category_art||'off'" in html)
     ck('r25 页面有可见构建标记，Ctrl+F5 后可确认线上是否已换包',
-       'r28 · 11-17' in html)
+       'r29 · 11-17' in html)
     ck('r25 分类纹样下移到中下部留白区，前后端同源且不再压标题与摘要',
        'cy=H*.66' in html and 'int(H * 0.66)' in rend
        and 'Math.min(W,H)*.17' in html and 'int(min(W, H) * 0.17)' in rend

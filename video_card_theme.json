@@ -5,7 +5,7 @@
   "size": "portrait",
   "typewriter": {
     "on": true,
-    "target": "subtitle",
+    "target": "frame",
     "ms_per_char": 55,
     "max_steps": 8,
     "note": "逐字只作用于字幕；卡片帧始终完整。卡片背景图由 cdArtOn 开关控制，默认关。"

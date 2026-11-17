@@ -245,7 +245,7 @@ def build_voice(root, manifest, mode=None):
 
 
 SUB_CHUNK_MAX = 30
-_ACTIVE_LINES = 2   # r28：由 build_srt / build_ass 按 subtitle.max_lines（1–5）设置
+_ACTIVE_LINES = 2   # r29：由 build_srt / build_ass 按 subtitle.max_lines（1–5）设置，ASS 不再夹到 3
 
 
 def subtitle_chunks(text):
@@ -330,7 +330,7 @@ def build_ass(root, voice, manifest, path, W, H):
     """
     global _ACTIVE_LINES
     sub = manifest['config']['subtitle']
-    _ACTIVE_LINES = max(1, min(3, int(sub.get('max_lines', 2))))
+    _ACTIVE_LINES = max(1, min(5, int(sub.get('max_lines', 2))))
     tw = manifest['config'].get('typewriter') or {}
 
     def color(hexs, alpha='00'):
