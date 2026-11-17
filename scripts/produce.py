@@ -218,7 +218,7 @@ def simple_frame(root, text, size, out, acc_hex='#e6432f', reveal=1.0, theme='de
                   encoding='utf-8') as mf:
             json.dump({'kind': kind_norm, 'boxes': boxes, 'overlap': overlap,
                        'disclaimer': DISCLAIMER, 'item_count_shown': False,
-                       'window_once': True}, mf, ensure_ascii=False, indent=2)
+                       'window_once': True, 'disclaimer_read': False}, mf, ensure_ascii=False, indent=2)
     return {'kind': kind_norm, 'overlap': overlap, 'boxes': boxes}
 
 
@@ -334,10 +334,13 @@ def frames_for(root, manifest, voice, size, tw):
             seq += 1
             p = os.path.join(outdir, 'f%03d.png' % seq)
             ratio = j / steps
-            # r34：标题段先逐字出完，摘要段再按剩余时长出；与页面 leadDur 公式同源
+            # r34：标题段先逐字出完，摘要段再按剩余时长出；r35 改用真实分段音轨 lead_dur。
             _full = str(s.get('text') or '')
             _sub = str(s.get('sub_text') or _full)
-            _lead = max(0, len(_full) - len(_sub)) / max(1, len(_full))
+            _legacy_lead = max(0, len(_full) - len(_sub)) / max(1, len(_full))
+            _vseg = vs[i] if i < len(vs) else {}
+            _real_lead = float(_vseg.get('lead_dur') or 0)
+            _lead = min(.92, max(.05, _real_lead / max(.01, du))) if _real_lead > 0 else _legacy_lead
             _td = max(.05, _lead)
             _bd = max(.05, 1 - _lead)
             _reveal = {'t': max(0.0, min(1.0, ratio / _td)),
@@ -453,6 +456,8 @@ def produce(root, manifest, voice, card_cfg):
             k = adur / s
             for x in vsegs:
                 x['dur'] = x['dur'] * k
+                if x.get('lead_dur'):
+                    x['lead_dur'] = x['lead_dur'] * k
             voice['total'] = adur
 
     sub = manifest['config']['subtitle']
@@ -506,7 +511,9 @@ def produce(root, manifest, voice, card_cfg):
         json.dump(status, f, ensure_ascii=False, indent=2)
     tl = {'source': '逐句音频 ffprobe 真实时长（已按拼接后 PCM 总长归一）',
           'total': round(adur, 3), 'unit': 's',
-          'segments': [{'i': i + 1, 'dur': round(x['dur'], 3), 'text': x['text']}
+          'lead_durs': [round(float(x.get('lead_dur') or 0), 3) for x in vsegs],
+          'segments': [{'i': i + 1, 'dur': round(x['dur'], 3), 'text': x['text'],
+                        'lead_dur': round(float(x.get('lead_dur') or 0), 3)}
                        for i, x in enumerate(vsegs)]}
     with open(os.path.join(root, 'media', 'timeline.json'), 'w', encoding='utf-8') as f:
         json.dump(tl, f, ensure_ascii=False, indent=2)

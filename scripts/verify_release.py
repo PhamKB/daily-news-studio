@@ -664,7 +664,7 @@ def main():
     ck('页面默认值与内嵌 payload 已改今日要闻速览',
        'value="今日要闻速览"' in html and '"title": "今日要闻速览"' in html)
     ck('旧浏览器状态自动迁移，换包刷新不会残留旧品牌名',
-       "const STATE_VER='r32-1'" in html and "\\u6bcf\\u65e5" in html
+       "const STATE_VER='r35-1'" in html and "\\u6bcf\\u65e5" in html
        and "S.cover.title=DEF.cover.title" in html
        and "split(OLD_BRAND).join('今日要闻速览')" in html)
 
@@ -745,7 +745,7 @@ def main():
        "'opening': 'open'" in prod and "'closing': 'close'" in prod
        and 'kind_norm' in prod and 'labels.get(kind_norm' in prod
        and "if kind_norm == 'close'" in prod)
-    ck('旧浏览器状态迁移到 r30-1', "const STATE_VER='r32-1'" in html
+    ck('旧浏览器状态迁移到 r35-1', "const STATE_VER='r35-1'" in html
        and 'itemFont' in html and "if(o.__ver!==STATE_VER)" in html)
 
     ck('stillimage 调优', "'-tune', 'stillimage'" in prod)
@@ -909,7 +909,7 @@ def main():
        "background_style" in prod and "max_lines" in prod and "'navy': '&H8C2A1B0D'" in prod
        and "style == 'custom'" in prod and "bg_alpha" in prod and "letter_spacing" in prod
        and "bg_alpha" in src and "letter_spacing" in src)
-    ck('STATE_VER 升级且旧状态迁移', "const STATE_VER='r32-1'" in html and 'S.shared={theme:' in html
+    ck('STATE_VER 升级且旧状态迁移', "const STATE_VER='r35-1'" in html and 'S.shared={theme:' in html
        and 'S.typewriter.on=true' in html)
     # ---- r23 防回归 ----
     ck('r23 文稿改标题/删除/调序/条数后封面同源重绘',
@@ -1036,7 +1036,7 @@ def main():
        and 'drawCategoryArt(ctx,W,H,c,S.card.category_art' in html
        and "category_art:S.card.category_art||'off'" in html)
     ck('r25 页面有可见构建标记，Ctrl+F5 后可确认线上是否已换包',
-       'r34 · 11-17' in html and 'r33 · 11-17' not in html)
+       'r35 · 11-17' in html and 'r34 · 11-17' not in html)
     ck('r25 分类纹样下移到中下部留白区，前后端同源且不再压标题与摘要',
        'cy=H*.66' in html and 'int(H * 0.66)' in rend
        and 'Math.min(W,H)*.17' in html and 'int(min(W, H) * 0.17)' in rend
@@ -1137,13 +1137,39 @@ def main():
                for s in mf['segments'])
        and '不构成投资' not in str(data.get('close') or '')
        and '不构成投资' not in str(ds.get('closing') or ''))
-    ck('r34 可见标记已升级', 'r34 · 11-17' in html and 'r33 · 11-17' not in html)
+    ck('r34 可见标记已升级', 'r35 · 11-17' in html and 'r34 · 11-17' not in html)
 
     ck('r32 全文不再出现旧品牌名',
        all('\u6bcf\u65e5\u8981\u95fb' not in open(os.path.join(ROOT, f), encoding='utf-8').read() for f in
            ('index.html', 'data.js', 'data.json', 'data_source.json',
             'render_manifest.json', 'cover_theme.json', 'video_card_theme.json',
             '口播文稿.md', '封面清单.md')))
+
+    # ---------------- r35 ----------------
+    ck('r35 视频帧逐字用真实分段 lead_dur，标题先出、摘要后出，底部无第二层字幕',
+       'function stripDisclaimerText' in html
+       and 'const _leadArr=(S.leadDurs&&S.leadDurs.length===seg.length)' in html
+       and 'if(_realLead>0)leadDur=' in html
+       and 'async function concatAudioBlobs' in html
+       and 'function frameVoiceParts' in html
+       and 'lead_dur:leadDur' in html
+       and 'if(cardIdx!==null && !twFrm){' in html
+       and 'def _concat2(' in tts_src and 'def _split_spoken(' in tts_src
+       and '_real_lead = float(s.get' in tts_src
+       and '_real_lead = float(_vseg.get' in prod
+       and "'lead_durs': [" in prod)
+    ck('r35 免责声明只显示不朗读：旧状态/旧配置变体全部从口播剥离',
+       'function stripDisclaimerText' in html
+       and "['opening','windowText','body','closing'].forEach" in html
+       and 'def _strip_disclaimer' in src
+       and '仅供参考，不构成' not in open(os.path.join(ROOT, '口播文稿.md'), encoding='utf-8').read()
+       and all('内容依据公开信息整理' not in str(s.get('text') or '') and
+               '仅供参考，不构成' not in str(s.get('text') or '') and
+               '内容依据公开信息整理' not in str(s.get('sub_text') or '')
+               for s in mf['segments'])
+       and '仅供参考，不构成' not in str(data.get('close') or '')
+       and '仅供参考，不构成' not in str(ds.get('closing') or ''))
+    ck('r35 可见标记已升级', 'r35 · 11-17' in html and 'r34 · 11-17' not in html)
 
     bad = [c for c in CHECKS if not c['ok']]
     print('共 %d 项，失败 %d 项' % (len(CHECKS), len(bad)))

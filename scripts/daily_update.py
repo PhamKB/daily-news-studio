@@ -64,6 +64,7 @@ def main():
             'voice': cfg.get('voice'), 'bgm': cfg.get('bgm'), 'mix': cfg.get('mix'),
             'subtitle': cfg.get('subtitle', True),
             'typewriter': cfg.get('typewriter') or {},
+            'lead_durs': cfg.get('lead_durs') or (cfg.get('timeline') or {}).get('lead_durs') or [],
             'export_size': cfg.get('export_size') or 'portrait',
             'issue_mode': cfg.get('issue_mode', 'auto'),
             'cover_theme': cfg.get('cover_theme') or {},

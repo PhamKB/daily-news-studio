@@ -523,15 +523,20 @@ def build_outputs(root, p, cfg):
     window = p['window_statement']
     window_on = bool(cfg.get('window_on', True))
     closing = cfg.get('closing') or p['close'] or '以上是今日要闻速览，感谢收听，下期见。'
-    # 免责声明只放页面，不进口播/字幕/视频帧；旧配置里的免责句一律剥离
-    for junk in ('部分为预测或时点数据，',
-                 '内容依据公开信息整理，具体以官方发布为准。',
-                 '内容依据公开信息整理，以官方发布为准。',
-                 '仅供参考，不构成投资、医疗或法律建议。'):
-        closing = closing.replace(junk, '')
-    body = '\n\n'.join(n['title'] + '。' +
-                        str(n['summary']).replace('\n', '').replace('\u3000', '') for n in news)
-    segs = [opening] + ([window] if window_on else []) + body.split('\n\n') + [closing]
+    # r35：免责声明只放片尾帧；开场 / 窗口 / 正文 / 片尾里任何变体都从口播剥离。
+    def _strip_disclaimer(s):
+        s = re.sub(r'免责声明[:：]?', '', str(s or ''))
+        s = re.sub(r'内容依据公开信息整理[^。\n]*。?', '', s)
+        s = re.sub(r'仅供参考[^。\n]*。?', '', s)
+        s = re.sub(r'不构成(投资|医疗|法律)建议[。；;]?', '', s)
+        return re.sub(r'[ \t\r\f\v\u3000]+', ' ', s).strip()
+    opening = _strip_disclaimer(opening)
+    window = _strip_disclaimer(window)
+    closing = _strip_disclaimer(closing)
+    body = _strip_disclaimer('\n\n'.join(n['title'] + '。' +
+                        str(n['summary']).replace('\n', '').replace('\u3000', '') for n in news))
+    segs = [_strip_disclaimer(s) for s in
+            ([opening] + ([window] if window_on else []) + body.split('\n\n') + [closing])]
     gate('开场含本期日期', bool(_dcn) and _dcn in opening)
     gate('口播不含序号前缀', not any(re.match(r'^第\s*\d+\s*条', s) for s in segs))
     gate('口播不含来源/URL', not any(('来源：' in s or 'http' in s) for s in segs))
@@ -608,6 +613,12 @@ def build_outputs(root, p, cfg):
                'font': 'WenQuanYi Micro Hei', 'typewriter': True}
     # r25：字幕去标题开关写进数据契约，页面导出 manifest 后云端同源生效
     sub['no_title'] = bool(sub_in.get('no_title', True)) if isinstance(sub_in, dict) else True
+    # r35：页面逐句合成得到的真实「标题段时长」随配置进云端；空数组时服务端会按分段音轨实测。
+    lead_durs = cfg.get('lead_durs') or (cfg.get('timeline') or {}).get('lead_durs') or []
+    try:
+        lead_durs = [max(0.0, float(x or 0)) for x in lead_durs]
+    except Exception:
+        lead_durs = []
     tw_in = cfg.get('typewriter') or {}
     tw = {'on': bool(tw_in.get('on', True)), 'target': tw_in.get('target', 'frame'),
           'ms_per_char': int(tw_in.get('ms_per_char', 55)), 'max_steps': int(tw_in.get('max_steps', 8))}
@@ -615,6 +626,22 @@ def build_outputs(root, p, cfg):
     export_size = cfg.get('export_size') or (cv.get('size') if isinstance(cv, dict) else None) or 'portrait'
     if export_size not in ('portrait', 'landscape', 'xhs', 'wechat', 'square'):
         export_size = 'portrait'
+    def _seg_kind(i):
+        return 'opening' if i == 0 else ('window' if window_on and i == 1 else
+            ('closing' if i == len(segs) - 1 else 'news'))
+
+    def _lead_text(s, i):
+        if _seg_kind(i) != 'news':
+            return None
+        sub = _sub_text(s, i)
+        if sub and str(s).endswith(str(sub)):
+            return str(s)[:-len(str(sub))].strip()
+        q = str(s).find('。')
+        return (str(s)[:q + 1].strip() or None) if q > 0 else None
+
+    def _lead_dur(i):
+        return round(lead_durs[i], 3) if 0 <= i < len(lead_durs) else 0.0
+
     def _sub_text(s, i):
         """r30：字幕正文直接取表格「内容摘要」列，与页面 subTextOf 同源。
         旧版靠找首个句号剥标题，标题里没有句号时整句退回，成品字幕就念了标题。"""
@@ -642,7 +669,9 @@ def build_outputs(root, p, cfg):
                          'show_title': head.get('show_title', True),
                          'show_date': head.get('show_date', True),
                          'show_issue': head.get('show_issue', True)},
+        'lead_durs': lead_durs,
         'segments': [{'i': i + 1, 'text': s, 'sub_text': _sub_text(s, i),
+                      'lead_text': _lead_text(s, i), 'lead_dur': _lead_dur(i),
                       'kind': 'opening' if i == 0 else
                       ('window' if window_on and i == 1 else
                        ('closing' if i == len(segs) - 1 else 'news')),

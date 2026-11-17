@@ -150,10 +150,40 @@ def _cache_path(outdir, text, voice, rate):
     return os.path.join(outdir, 'cache_' + key + '.mp3'), key
 
 
+def _concat2(a, b, out):
+    """把标题段与摘要段音频拼成同一句，返回输出路径。"""
+    subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', a, '-i', b,
+                    '-filter_complex', '[0:a][1:a]concat=n=2:v=0:a=1[out]',
+                    '-map', '[out]', '-ar', '24000', '-ac', '1',
+                    '-c:a', 'libmp3lame', '-b:a', '96k', out], check=True)
+    if not os.path.isfile(out) or os.path.getsize(out) < 512:
+        raise VoiceError('分段音频拼接失败：' + out)
+    return out
+
+
+def _split_spoken(seg):
+    """返回 (标题段, 摘要段)；无法可靠拆分时回退整句合成。"""
+    full = str(seg.get('text') or '')
+    sub = str(seg.get('sub_text') or '')
+    if sub and full.endswith(sub):
+        lead = full[:-len(sub)].strip()
+        body = sub.strip()
+    elif '。' in full:
+        q = full.find('。')
+        lead, body = full[:q + 1].strip(), full[q + 1:].strip()
+    else:
+        return None
+    if not lead or not body:
+        return None
+    return lead, body
+
+
 def _synth_parallel(root, manifest, cfg, segs, outdir, fetcher, tag):
-    """6 路并发 + 本地缓存；任一句失败即整体抛错（stop_and_report）。"""
+    """并发合成；frame 模式下标题段/摘要段分别实测时长，再拼成同一句音频。"""
     workers = min(16, max(1, int(cfg.get('concurrency', 16))))
     results = [None] * len(segs)
+    tw = ((manifest.get('config') or {}).get('typewriter') or {})
+    frame_mode = bool(tw.get('on', True)) and tw.get('target', 'frame') in ('frame', 'both')
     jobs = []
     for k, seg in enumerate(segs):
         p, key = _cache_path(outdir, seg['text'], cfg.get('voice', ''), cfg.get('rate', 0))
@@ -161,19 +191,40 @@ def _synth_parallel(root, manifest, cfg, segs, outdir, fetcher, tag):
 
     def work(job):
         k, seg, p, hit = job
-        if not hit:
+        parts = _split_spoken(seg) if frame_mode and seg.get('kind') == 'news' else None
+        cached = hit
+        lead_dur = 0.0
+        if parts:
+            lead_text, body_text = parts
+            lp, _ = _cache_path(outdir, 'LEAD::' + lead_text, cfg.get('voice', ''), cfg.get('rate', 0))
+            bp, _ = _cache_path(outdir, 'BODY::' + body_text, cfg.get('voice', ''), cfg.get('rate', 0))
+            lhit = os.path.isfile(lp) and os.path.getsize(lp) > 512
+            bhit = os.path.isfile(bp) and os.path.getsize(bp) > 512
+            if not lhit:
+                fetcher(lead_text, lp)
+            if not bhit:
+                fetcher(body_text, bp)
+            if not (os.path.isfile(lp) and os.path.getsize(lp) > 512 and
+                    os.path.isfile(bp) and os.path.getsize(bp) > 512):
+                raise VoiceError('%s 第 %d 句分段输出为空' % (tag, k + 1))
+            _concat2(lp, bp, p)
+            lead_dur = _probe_dur(lp)
+            cached = lhit and bhit
+        elif not hit:
             fetcher(seg['text'], p)
         if not os.path.isfile(p) or os.path.getsize(p) < 512:
             raise VoiceError('%s 第 %d 句输出为空' % (tag, k + 1))
         return k, {'file': p, 'dur': _probe_dur(p), 'text': seg['text'],
-                   'sub_text': seg.get('sub_text') or seg['text'], 'cached': hit}
+                   'sub_text': seg.get('sub_text') or seg['text'],
+                   'lead_text': parts[0] if parts else None,
+                   'lead_dur': lead_dur, 'cached': cached}
 
     errors = []
     with ThreadPoolExecutor(max_workers=workers) as ex:
         futs = {ex.submit(work, j): j for j in jobs}
-        for f in as_completed(futs):
+        for fut in as_completed(futs):
             try:
-                k, item = f.result()
+                k, item = fut.result()
                 results[k] = item
             except Exception as e:
                 errors.append('%r' % (e,))
@@ -181,9 +232,9 @@ def _synth_parallel(root, manifest, cfg, segs, outdir, fetcher, tag):
         raise VoiceError('%s 并发合成失败（%d/%d）：%s；停止出片，不静音占位' %
                          (tag, len(errors), len(jobs), ' | '.join(errors[:4])))
     cached = sum(1 for x in results if x['cached'])
-    print('人声：%s %d 句 / %d 路并发 / 缓存复用 %d 句' % (tag, len(results), workers, cached), flush=True)
+    print('人声：%s %d 句 / %d 路并发 / 缓存复用 %d 句 / 分段实测 %d 句' %
+          (tag, len(results), workers, cached, sum(1 for x in results if x.get('lead_dur'))), flush=True)
     return results
-
 
 def build_voice(root, manifest, mode=None):
     cfg = manifest['config']['voice']
@@ -209,8 +260,14 @@ def build_voice(root, manifest, mode=None):
             # 冒烟用：每句压到 <=3s，避免把 30 条长稿编成十几分钟视频；真实模式不受影响
             dur = min(3.0, max(1.2, estimate(s['text'])))
             _wav_silence(p, dur)
+            full = str(s.get('text') or '')
+            sub = str(s.get('sub_text') or full)
+            lead = max(0, len(full) - len(sub))
+            lead_dur = float(s.get('lead_dur') or 0) or dur * lead / max(1, len(full))
+            lead_dur = min(max(0.0, lead_dur), dur * .92) if s.get('kind') == 'news' else 0.0
             result.append({'file': p, 'dur': dur, 'text': s['text'],
-                           'sub_text': s.get('sub_text') or s['text']})
+                           'sub_text': sub, 'lead_text': s.get('lead_text'),
+                           'lead_dur': lead_dur})
         return {'mode': 'dry-run', 'real_voice': False, 'total': sum(x['dur'] for x in result),
                 'segments': result,
                 'note': '本地静音占位且每句压到<=3s，仅验混音/字幕/封装链路；不是真人声，也不是成品时长'}
@@ -382,6 +439,9 @@ def build_srt(root, voice, manifest, path):
         # 扣掉这段朗读时长，字幕从人声念完标题那一刻才开始，逐字才同步。
         lead = max(0, len(str(full)) - len(str(text)))
         lead_dur = s['dur'] * lead / max(1, len(str(full)))
+        _real_lead = float(s.get('lead_dur') or 0) if voice['mode'] != 'upload' else 0.0
+        if _real_lead > 0:
+            lead_dur = min(max(.01, _real_lead), s['dur'] * .92)
         st_sub = st + lead_dur
         dur_sub = max(0.2, s['dur'] - lead_dur)
         chunks = subtitle_chunks(text)
@@ -466,6 +526,9 @@ def build_ass(root, voice, manifest, path, W, H):
             text = m.get('sub_text') or m['text']
         lead = max(0, len(str(full)) - len(str(text)))
         lead_dur = s['dur'] * lead / max(1, len(str(full)))
+        _real_lead = float(s.get('lead_dur') or 0) if voice['mode'] != 'upload' else 0.0
+        if _real_lead > 0:
+            lead_dur = min(max(.01, _real_lead), s['dur'] * .92)
         st_sub = st + lead_dur
         dur_sub = max(0.2, s['dur'] - lead_dur)
         chunks = subtitle_chunks(text)

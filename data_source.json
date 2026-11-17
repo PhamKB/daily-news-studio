@@ -889,5 +889,6 @@
     "programmatic_indent": false,
     "excel_indent_kept": true,
     "content_group": "top"
-  }
+  },
+  "lead_durs": []
 }
