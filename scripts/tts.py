@@ -364,6 +364,13 @@ def build_srt(root, voice, manifest, path):
     t, lines, idx = 0.0, [], 0
     for i, s in enumerate(voice['segments'], 1):
         st, en = t, t + s['dur']
+        try:
+            _k = str(manifest['segments'][i - 1].get('type') or '')
+        except Exception:
+            _k = ''
+        if _k in ('open', 'close', 'opening', 'closing', 'window'):
+            t = en
+            continue
         if voice['mode'] != 'upload':
             full = s['text']
             text = s.get('sub_text') or s['text']
@@ -425,7 +432,8 @@ def build_ass(root, voice, manifest, path, W, H):
     primary = color(sub.get('color', '#FFFFFF'), '00')
     # &HFF...... = alpha FF = 完全透明，未「打」到的字不可见
     secondary = '&HFF000000'
-    outline = color(sub.get('outline_color', '#0d1b2a'), '00')
+    outline = '&H00000000'
+    spacing = max(0, min(12, int(sub.get('letter_spacing', 0))))
     font = sub.get('font', 'WenQuanYi Micro Hei')
 
     lines = [
@@ -435,14 +443,20 @@ def build_ass(root, voice, manifest, path, W, H):
         'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, '
         'BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, '
         'BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding',
-        'Style: Default,%s,%d,%s,%s,%s,&H80000000,0,0,0,0,100,100,0,0,%d,2,0,%d,%d,10,%d,1'
-        % (font, fs, primary, secondary, outline, border, align, margin_l, margin_v), '',
+        'Style: Default,%s,%d,%s,%s,%s,&H80000000,0,0,0,0,100,100,%d,0,%d,0,0,%d,%d,10,%d,1'
+        % (font, fs, primary, secondary, outline, spacing, border, align, margin_l, margin_v), '',
         '[Events]', 'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text',
     ]
     t = 0.0
     for i, s in enumerate(voice['segments'], 0):
         st, en = t, t + s['dur']
         t = en
+        try:
+            _k = str(manifest['segments'][i].get('type') or '')
+        except Exception:
+            _k = ''
+        if _k in ('open', 'close', 'opening', 'closing', 'window'):
+            continue
         if voice['mode'] != 'upload':
             full = s['text']
             text = s.get('sub_text') or s['text']

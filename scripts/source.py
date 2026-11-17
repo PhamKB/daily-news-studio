@@ -582,30 +582,29 @@ def build_outputs(root, p, cfg):
     sub_in = cfg.get('subtitle')
     if isinstance(sub_in, bool):
         sub = {'on': sub_in, 'burn_in': True, 'soft_track': True, 'font_size': 44,
-               'color': '#FFFFFF', 'outline_color': '#0d1b2a', 'position': 'bottom',
+               'color': '#FFFFFF', 'letter_spacing': 0, 'position': 'bottom',
                'background': True, 'background_style': 'black', 'bg_color': '#040b12',
-               'bg_alpha': 84, 'outline_width': 2, 'max_lines': 2,
+               'bg_alpha': 84, 'letter_spacing': 0, 'max_lines': 2,
                'font': 'WenQuanYi Micro Hei', 'typewriter': True}
     elif isinstance(sub_in, dict):
         sub = {'on': bool(sub_in.get('on', True)), 'burn_in': bool(sub_in.get('burn_in', True)),
                'soft_track': bool(sub_in.get('soft_track', True)),
                'font_size': int(sub_in.get('font_size', 44)),
                'color': sub_in.get('color', '#FFFFFF'),
-               'outline_color': sub_in.get('outline_color', '#0d1b2a'),
+               'letter_spacing': max(0, min(12, int(sub_in.get('letter_spacing', 0)))),
                'position': sub_in.get('position', 'bottom'),
                'background': bool(sub_in.get('background', True)),
                'background_style': sub_in.get('background_style', 'black'),
                'bg_color': sub_in.get('bg_color', '#040b12'),
                'bg_alpha': int(sub_in.get('bg_alpha', 84)),
-               'outline_width': int(sub_in.get('outline_width', 2)),
                'max_lines': max(1, min(5, int(sub_in.get('max_lines', 2)))),
                'font': sub_in.get('font', 'WenQuanYi Micro Hei'),
                'typewriter': bool(sub_in.get('typewriter', True))}
     else:
         sub = {'on': True, 'burn_in': True, 'soft_track': True, 'font_size': 44,
-               'color': '#FFFFFF', 'outline_color': '#0d1b2a', 'position': 'bottom',
+               'color': '#FFFFFF', 'letter_spacing': 0, 'position': 'bottom',
                'background': True, 'background_style': 'black', 'bg_color': '#040b12',
-               'bg_alpha': 84, 'outline_width': 2, 'max_lines': 2,
+               'bg_alpha': 84, 'letter_spacing': 0, 'max_lines': 2,
                'font': 'WenQuanYi Micro Hei', 'typewriter': True}
     # r25：字幕去标题开关写进数据契约，页面导出 manifest 后云端同源生效
     sub['no_title'] = bool(sub_in.get('no_title', True)) if isinstance(sub_in, dict) else True

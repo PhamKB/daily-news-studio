@@ -811,8 +811,8 @@ def render_card(root, card, cfg, out_path, meta_path=None, reveal=1.0):
     issue_s = SRC.norm_issue(str(hdr.get('issue') or '第01期'))
     show_t = bool(hdr.get('show_title', True)); show_d = bool(hdr.get('show_date', True))
     show_i = bool(hdr.get('show_issue', True))
-    # r27：卡片帧标题与摘要始终完整，逐字只作用于字幕层（不再出现「标题出一半」）
-    rv = 1.0
+    # r32：视频帧逐字 = 卡片标题/摘要按真实进度逐字显现（frames_for 逐字子帧传 reveal）
+    rv = max(0.0, min(1.0, float(reveal)))
     ttl = str(card['title'])
     raw_smy = str(card['summary'])
 
@@ -898,11 +898,15 @@ def render_card(root, card, cfg, out_path, meta_path=None, reveal=1.0):
             slines = fill_wrap(d, body_txt, bf, CW, sind)
 
     sy = ty + len(tlines) * tlh + para_gap
+    left_t = int(len(ttl) * rv + 0.9999)
     for i, (ln, off) in enumerate(tlines):
-        txt(d, (M + off, ty + i * tlh), ln, tf, title_col, True)
+        k = min(len(ln), max(0, left_t)); left_t -= k
+        if k: txt(d, (M + off, ty + i * tlh), ln[:k], tf, title_col, True)
     title_end = ty + len(tlines) * tlh
+    left_s = int(len(body_txt) * rv + 0.9999)
     for i, (ln, off) in enumerate(slines):
-        txt(d, (M + off, sy + i * blh), ln, bf, sum_col)
+        k = min(len(ln), max(0, left_s)); left_s -= k
+        if k: txt(d, (M + off, sy + i * blh), ln[:k], bf, sum_col)
     sum_end = sy + len(slines) * blh
 
     if short:
@@ -1260,10 +1264,11 @@ def _render_equal_cover(root, payload, cfg, out_path, meta_path, sem):
         for k, ln in enumerate(blocks[i][0]):
             txt(d, (x + tx_off, ty + k * fs * 1.22), ln, f, item_col, item_bold)
 
-    foot = '%s · %s   %s' % (title, SRC.norm_issue(issue.get('issue_no') or payload.get('issue') or '第01期'),
-                             str(issue.get('date') or payload.get('date') or '').replace('-', '.'))
+    _all_n = len(payload.get('news') or [])
+    _lim = int(payload.get('news_limit') or 0)
+    _show_n = min(_lim, _all_n) if _lim > 0 else _all_n
+    foot = '本期共有 %d 条资讯，仅展示 %d 条' % (_all_n, _show_n)
     txt(d, (pad, H - 42 * u), foot, F(22 * u, root, True), co['sub'])
-    txt(d, (W - pad, H - 42 * u), '1 / 1', F(22 * u, root), co['sub'], anchor='ra')
 
     if wm.get('on'):
         a = float(wm.get('alpha', .12))
@@ -1345,10 +1350,10 @@ def render_semantic_cover(root, payload, cfg, out_path, meta_path=None):
     land = is_land(size)
     footer_h = 62 * u
     gap_cfg = cfg.get('gap', 'airy')
-    row_gap = {'compact': 18, 'standard': 34, 'airy': 50}.get(gap_cfg, 34) * u
-    land_gap = {'compact': 8, 'standard': 15, 'airy': 22}.get(gap_cfg, 15) * u
+    row_gap = {'compact': 8, 'standard': 14, 'airy': 22}.get(gap_cfg, 14) * u
+    land_gap = {'compact': 4, 'standard': 6, 'airy': 10}.get(gap_cfg, 6) * u
     # 行高按最大档收敛：三档差全部留给条目间真实空隙，不被 rowh 反推吃掉
-    rh_gap, lh_gap = 34 * u, 28 * u
+    rh_gap, lh_gap = 14 * u, 12 * u
     sep_mode = _sep_mode(cfg)
     d.rectangle([0, 0, W, max(3, int(6 * u))], fill=acc)
     show_t = head.get('show_title', True)
@@ -1383,7 +1388,7 @@ def render_semantic_cover(root, payload, cfg, out_path, meta_path=None):
     def uniform_lines(texts, maxw, fs0, minfs, max_lines, rowh):
         """整组共用一个字号：长标题换行到 <= max_lines，不逐条缩字号、不截断。
         行高上限由 rowh 反推，保证两行文字也不越出卡片。"""
-        cap = int((rowh - 14 * u) / (max_lines * 1.32))
+        cap = int((rowh - 14 * u) / (max_lines * 1.22))
         fs = max(int(minfs), min(int(fs0), cap))
         f = CF(int(fs), root)
         rows = [wrap(d, t, f, maxw) for t in texts]
@@ -1455,7 +1460,7 @@ def render_semantic_cover(root, payload, cfg, out_path, meta_path=None):
     def hero_lines(hero, x0, x1, big):
         """头条只保留：标签 / 数值行 / 标题（最多 2 行）。"""
         out = []
-        out.append((46 * u, lambda y: T(x0, y, '今日头条', F(32 * u, root, True),
+        out.append((36 * u, lambda y: T(x0, y, '今日头条', F(32 * u, root, True),
                                         acc, 'hero_label', bold=True)))
         if hero.get('value'):
             def value_row(y, hero=hero):
@@ -1470,11 +1475,11 @@ def render_semantic_cover(root, payload, cfg, out_path, meta_path=None):
                 if hero.get('unit'):
                     T(bb[2] + 14 * u, y + 82 * u, hero['unit'], F(30 * u, root),
                       acc, 'hero_unit')
-            out.append((152 * u, value_row))
+            out.append((120 * u, value_row))
         f, ls, fs = _fit(d, hero['title'], x1 - x0, 110 * u, big * u, 26 * u,
                          root, 2, True)
         for ln in ls[:2]:
-            out.append((fs * 1.34, (lambda ln=ln, f=f: lambda y: T(x0, y, ln, f, fg,
+            out.append((fs * 1.24, (lambda ln=ln, f=f: lambda y: T(x0, y, ln, f, fg,
                                                                     'hero_title', bold=True))(ln, f)))
         return out
 
@@ -1489,7 +1494,7 @@ def render_semantic_cover(root, payload, cfg, out_path, meta_path=None):
         rh = rowh or max(74 * u, fs0 * 1.5)
         texts = [str(it.get('label') or it['title']) for it in items]
         f, rows, fs = uniform_lines(texts, maxw, fs0, minfs, 2, rh)
-        lh = fs * 1.32
+        lh = fs * 1.22
         section_fs.append({'tag': tag, 'fs': fs, 'rows': len(items),
                            'lines': [len(r) for r in rows]})
         for k, it in enumerate(items):
@@ -1516,12 +1521,12 @@ def render_semantic_cover(root, payload, cfg, out_path, meta_path=None):
         if hero:
             hx0, hx1 = pad + 30 * u, W - pad - 30 * u
             ls = hero_lines(hero, hx0, hx1, 42)
-            inner = 28 * u
+            inner = 18 * u
             card_h = inner * 2 + sum(h for h, _ in ls) + row_gap * (len(ls) - 1)
             _box(d, co, pad, cy, W - pad, cy + card_h, 20 * u)
             boxes.append([pad, cy, W - pad, cy + card_h])
             draw_lines(ls, hx0, cy + inner)
-            cy += card_h + 28 * u
+            cy += card_h + 16 * u
 
         all_items = []
         for t in sem['topics']:
@@ -1536,19 +1541,19 @@ def render_semantic_cover(root, payload, cfg, out_path, meta_path=None):
         # 统一列表行高：专题与其余要闻共用同一 rowh，字号全封面一致。
         # 专题结束的 y 依赖 rowh，而 rowh 由剩余高度反推，迭代收敛。
         cy0 = cy
-        rh = 96 * u
+        rh = 112 * u
         if all_items or rest:
             for _ in range(4):
                 cy_t = cy0 + (54 * u + len(all_items) * (rh + rh_gap) - rh_gap
                               + 34 * u) if all_items else cy0
                 avail = H - footer_h - 20 * u - cy_t
-                rh = max(58 * u, min(96 * u,
+                rh = max(58 * u, min(112 * u,
                         (avail - 54 * u - len(rest) * rh_gap) / max(1, len(rest))))
         if all_items:
             label = '专题 · ' + (sem['topics'][0]['name'] or sem['topics'][0]['id'])
             e, _ = list_section(label, all_items, pad + 26 * u, W - pad - 26 * u,
                                 cy, _cis[1], 22 * u, 'topic', rowh=rh)
-            cy = e + 34 * u
+            cy = e + 16 * u
         if rest:
             e, _ = list_section('其余要闻 · %d 条' % len(rest), rest,
                                 pad + 26 * u, W - pad - 26 * u, cy,
@@ -1624,7 +1629,7 @@ def render_semantic_cover(root, payload, cfg, out_path, meta_path=None):
             tx0 = split + 30 * u
             f, ls, fs = _fit(d, hero['title'], ix1 - tx0, 120 * u,
                              42 * u, 30 * u, root, 2, True)
-            lh = fs * 1.34
+            lh = fs * 1.24
             lines = ls[:2]
             ty0 = by0 + (by1 - by0 - len(lines) * lh) / 2
             for j, ln in enumerate(lines):
@@ -1649,7 +1654,7 @@ def render_semantic_cover(root, payload, cfg, out_path, meta_path=None):
         maxrows = max(len(all_items), len(rest), 1)
         rh = max(78 * u, min(118 * u,
                  (avail - 54 * u - maxrows * lh_gap) / maxrows))
-        cap = int((rh - 14 * u) / (2 * 1.32))
+        cap = int((rh - 14 * u) / (2 * 1.22))
         fs = min(34 * u, cap)
 
         def all_fit(size):
@@ -1678,7 +1683,7 @@ def render_semantic_cover(root, payload, cfg, out_path, meta_path=None):
                 nx = num_chip(a, yy, h, it['rank'], it['rank'] <= 3,
                               tag + '_row' + str(k))
                 ls = wrap(d, str(it['label']), f, maxw)[:2]
-                lh = fs * 1.32
+                lh = fs * 1.22
                 ty2 = yy + (h - len(ls) * lh) / 2
                 for j, ln in enumerate(ls):
                     T(nx, ty2 + j * lh, ln, f, fg,
@@ -1700,10 +1705,11 @@ def render_semantic_cover(root, payload, cfg, out_path, meta_path=None):
         land_fs, land_rh = land_band()
 
     # ------------------------------------------------------------ 页脚
-    foot = '%s · %s   %s' % (title, SRC.norm_issue(issue.get('issue_no') or payload.get('issue') or '第01期'),
-                             str(issue.get('date') or payload.get('date') or '').replace('-', '.'))
+    _all_n = len(payload.get('news') or [])
+    _lim = int(payload.get('news_limit') or 0)
+    _show_n = min(_lim, _all_n) if _lim > 0 else _all_n
+    foot = '本期共有 %d 条资讯，仅展示 %d 条' % (_all_n, _show_n)
     T(pad, H - 42 * u, foot, F(22 * u, root, True), sub, 'footer', bold=True)
-    T(W - pad, H - 42 * u, '1 / 1', F(22 * u, root), sub, 'page', 'ra')
 
     if wm.get('on'):
         a = float(wm.get('alpha', .12))

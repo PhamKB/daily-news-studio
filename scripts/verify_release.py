@@ -581,14 +581,29 @@ def main():
        and "(S.cover.tpl==='headline'&&i===0)?maxW0:maxW" in html
        and "maxw0 = maxw - (int(120 * u) if tpl == 'headline' else 0)" in rend
        and "mw = maxw0 if (tpl == 'headline' and idx == 0) else maxw" in rend)
-    ck('语义编排条目间距三档前后端真实生效（紧凑=旧标准/标准=旧宽松/宽松更大）',
-       "const RG={compact:18,standard:34,airy:50}" in html
-       and "const GL={compact:8,standard:15,airy:22}" in html
-       and "{'compact': 18, 'standard': 34, 'airy': 50}.get(gap_cfg" in rend
-       and "{'compact': 8, 'standard': 15, 'airy': 22}.get(gap_cfg" in rend
+    ck('r33 语义编排行间距收紧且三档前后端同源（原 18/34/50 与 34/28 判红）',
+       "const RG={compact:8,standard:14,airy:22}" in html
+       and "const GL={compact:4,standard:6,airy:10}" in html
+       and "{'compact': 8, 'standard': 14, 'airy': 22}.get(gap_cfg" in rend
+       and "{'compact': 4, 'standard': 6, 'airy': 10}.get(gap_cfg" in rend
        and 'gapL=GL*u' in html and 'gapL = land_gap' in rend
-       and "const RH_GAP=34*u,LH_GAP=28*u" in html and 'rh_gap, lh_gap = 34 * u, 28 * u' in rend
+       and "const RH_GAP=14*u,LH_GAP=12*u" in html and 'rh_gap, lh_gap = 14 * u, 12 * u' in rend
+       and "const RG={compact:18,standard:34,airy:50}" not in html
+       and "row_gap = {'compact': 18, 'standard': 34, 'airy': 50}" not in rend
        and 'row_gap:Math.round(rowGap)' in html and "'land_gap': round(land_gap, 2)" in rend)
+    ck('r33 语义编排列表行距 1.32->1.22、头条 1.34/1.36->1.24/1.26，前后端同源',
+       '(maxLines*1.22)' in html and '(2*1.22)' in html
+       and '(max_lines * 1.22)' in rend and '(2 * 1.22)' in rend
+       and 'Math.round(fs)*1.22' in html and 'lh=fs*1.22' in html
+       and 'lh = fs * 1.22' in rend
+       and "'900',1.26" in html and 'fs * 1.24' in rend
+       and 'const lh=ft.size*1.24' in html)
+    ck('r33 语义编排专题/其余要闻共用同一字号（页面不再写死 30*u、rest_fs 不写死）',
+       "cy,_cis.fs,22*u,'topic',rh)" in html
+       and "cy,30*u,22*u,'topic',rh)" not in html
+       and "cy, _cis[1], 22 * u, 'topic', rowh=rh)" in rend
+       and 'rest_fs:Math.round(land?(landFS||30*u):30*u)' not in html
+       and 'FS.length?FS[FS.length-1].fs' in html)
     ck('刷新在线音色一律中文名，不再把英文 id 当标签',
        'const VOICE_CN0=' in html and 'function cnVoiceName(' in html
        and 'VOICE_ALIAS=[' in html and "o.textContent=cnVoiceName(o.value)" in html
@@ -649,7 +664,7 @@ def main():
     ck('页面默认值与内嵌 payload 已改今日要闻速览',
        'value="今日要闻速览"' in html and '"title": "今日要闻速览"' in html)
     ck('旧浏览器状态自动迁移，换包刷新不会残留旧品牌名',
-       "const STATE_VER='r31-1'" in html and "\\u6bcf\\u65e5" in html
+       "const STATE_VER='r32-1'" in html and "\\u6bcf\\u65e5" in html
        and "S.cover.title=DEF.cover.title" in html
        and "split(OLD_BRAND).join('今日要闻速览')" in html)
 
@@ -730,7 +745,7 @@ def main():
        "'opening': 'open'" in prod and "'closing': 'close'" in prod
        and 'kind_norm' in prod and 'labels.get(kind_norm' in prod
        and "if kind_norm == 'close'" in prod)
-    ck('旧浏览器状态迁移到 r30-1', "const STATE_VER='r31-1'" in html
+    ck('旧浏览器状态迁移到 r30-1', "const STATE_VER='r32-1'" in html
        and 'itemFont' in html and "if(o.__ver!==STATE_VER)" in html)
 
     ck('stillimage 调优', "'-tune', 'stillimage'" in prod)
@@ -865,20 +880,20 @@ def main():
        ' const W=sz.w,H=sz.h;' in html and "if($('plCanvas').width!==_sz.w" in html
        and "ctx.scale(PW/540,PH/960)" in html
        and 'band:window.__cardDrawSubBand' in html)
-    ck('字幕底色/描边各自独立可调 + 显示行数下拉 1–5',
+    ck('字幕底色/字间距各自独立可调 + 显示行数下拉 1–5',
        all(x in html for x in ('<select id="subLines"', 'value="1">1 行', 'value="2" selected',
                                'value="3">3 行', 'value="4">4 行', 'value="5">5 行',
                                'value="none"', 'value="navy"', 'value="accent"', 'value="custom"',
-                               'id="subBgColor"', 'id="subBgAlpha"', 'id="subOutlineW"',
+                               'id="subBgColor"', 'id="subBgAlpha"', 'id="subLetter"',
                                'function subBgFill(', 'const SUB_BG=',
                                'function subMaxLines()', 'function subtitleSafeU()'))
        and '描边 / 底色' not in html
        and 'chips($(\'subLines\')' not in html)
-    ck('字幕配置导出同源（底色色值/透明度/描边宽/行数上限 5）',
+    ck('字幕配置导出同源（底色色值/透明度/字间距/行数上限 5）',
        "background_style:S.subtitle.background_style" in html
        and "bg_color:S.subtitle.bg_color" in html
        and "bg_alpha:+S.subtitle.bg_alpha" in html
-       and "outline_width:+S.subtitle.outline_width" in html
+       and "letter_spacing:Math.max(0,Math.min(12,+S.subtitle.letter_spacing||0))" in html
        and "max_lines:Math.max(1,Math.min(5,+S.subtitle.max_lines||2))" in html
        and '$(\'subLines\').value=String(subMaxLines())' in html
        and "'subLines'" in html)
@@ -889,11 +904,11 @@ def main():
        and 'src_y = line2 + int((CARD_SRC_GAP_L if land else CARD_SRC_GAP_P) * u) + safe_u' in rend
        and 'def subtitle_safe_u(cfg)' in rend
        and "R.SUBTITLE_SAFE_U = R.subtitle_safe_u(src_cfg.get('subtitle'))" in _dpy)
-    ck('服务端字幕样式支持自定义底色/透明度/描边宽与行数',
+    ck('服务端字幕样式支持自定义底色/透明度/字间距与行数',
        "background_style" in prod and "max_lines" in prod and "'navy': '&H8C2A1B0D'" in prod
-       and "style == 'custom'" in prod and "bg_alpha" in prod and "outline_width" in prod
-       and "bg_alpha" in src and "outline_width" in src)
-    ck('STATE_VER 升级且旧状态迁移', "const STATE_VER='r31-1'" in html and 'S.shared={theme:' in html
+       and "style == 'custom'" in prod and "bg_alpha" in prod and "letter_spacing" in prod
+       and "bg_alpha" in src and "letter_spacing" in src)
+    ck('STATE_VER 升级且旧状态迁移', "const STATE_VER='r32-1'" in html and 'S.shared={theme:' in html
        and 'S.typewriter.on=true' in html)
     # ---- r23 防回归 ----
     ck('r23 文稿改标题/删除/调序/条数后封面同源重绘',
@@ -936,11 +951,11 @@ def main():
        and 'dataTransfer.files' in html and "dz.addEventListener('drop'" in html
        and "$('bgmFile').onchange=()=>applyBgmFile" in html)
     ck('r30 两种作用位置都画字幕（不再有「字幕逐字=空白」）',
-       '<option value="frame" selected>视频帧逐字（烧录进画面）</option>' in html
+       '<option value="frame" selected>视频帧逐字（卡片内容）</option>' in html
        and 'value="subtitle"' in html and '字幕轨逐字' in html
        and "twFrm=(S.typewriter.target||'frame')==='frame'" in html
        and 'typewriter:twOn,frame:twFrm' in html
-       and 'const tw=!!cfg.typewriter&&cfg.frame!==false;' in html
+       and 'const tw=!!cfg.typewriter&&cfg.frame===false;' in html
        and 'enabled:twFrm' not in html
        and 'enabled===false' not in html
        and "sub.textContent=twFrm" not in html
@@ -991,8 +1006,9 @@ def main():
        'wrapText(ctx,label,460,2)' not in html and 'while(bigFs>36' in html
        and 'while big > int(52 * u)' in prod and 'lines = [label]' in prod
        and 'title_lines:1' in html)
-    ck('r23 片尾字幕带避开免责声明',
-       'window.__cardDrawSubBand=[Math.round(PH*.60),Math.round(PH*.78)]' in html)
+    ck('r32 片头片尾不画字幕块（替代 r23 字幕带）',
+       "if(cardIdx!==null){" in html and 'window.__subDraw=null' in html
+       and 'window.__cardDrawSubBand=[Math.round(PH*.60),Math.round(PH*.78)]' not in html)
 
 
     # ---- r25 防回归：片头 / 字幕 / 分类纹样 / 可见构建标记 ----
@@ -1019,7 +1035,7 @@ def main():
        and 'drawCategoryArt(ctx,W,H,c,S.card.category_art' in html
        and "category_art:S.card.category_art||'off'" in html)
     ck('r25 页面有可见构建标记，Ctrl+F5 后可确认线上是否已换包',
-       'r31 · 11-17' in html and 'r30 · 11-17' not in html)
+       'r33 · 11-17' in html and 'r32 · 11-17' not in html)
     ck('r25 分类纹样下移到中下部留白区，前后端同源且不再压标题与摘要',
        'cy=H*.66' in html and 'int(H * 0.66)' in rend
        and 'Math.min(W,H)*.17' in html and 'int(min(W, H) * 0.17)' in rend
@@ -1028,11 +1044,12 @@ def main():
     ck('r27 页面片头直接画本期封面（不再自建资讯窗口页）',
        "drawCover($('plCanvas'))" in html and "if(i===0){" in html
        and "kind:'open',cover:true" in html)
-    ck('r27 卡片标题与摘要始终完整，逐字只作用于字幕层',
+    ck('r32 视频帧逐字作用于卡片内容（替代 r27 旧口径）',
        'const title=String(c.title)' in html and 'const raw=String(c.summary)' in html
-       and "slice(0,Math.ceil(String(c.title).length*rv))" not in html
+       and 'leftT=Math.ceil(title.length*rv)' in html and 'leftS=Math.ceil(body.length*rv)' in html
        and "ttl = str(card['title'])" in rend
-       and "drawCard($('plCanvas'),cardIdx,true,1)" in html)
+       and "drawCard($('plCanvas'),cardIdx,true,rv)" in html
+       and 'rv = max(0.0, min(1.0, float(reveal)))' in rend)
     ck('r30 字幕起始对齐人声：页面与服务端同一 lead 公式（不再用估算上限）',
        'window.__subSync' in html and 'leadDur=durs[i]*lead/Math.max(1,_fullLen)' in html
        and 'leadRatio' not in html
@@ -1059,6 +1076,45 @@ def main():
     ck('r31 片段不在短标点处过早切断（页面 / 服务端同源）',
        '/[。！？；]/.test(ch)&&cur.length>=cap*.75' in html
        and "ch in '。！？；' and len(cur) >= cap * 0.75" in tts_src)
+
+    # ---------------- r32 ----------------
+    ck('r32 视频帧逐字 = 卡片标题/摘要按 rv 逐字显现（页面 + 服务端 + 子帧传参同源）',
+       "const rv=(typeof reveal==='number'&&isFinite(reveal))" in html
+       and 'leftT=Math.ceil(title.length*rv)' in html
+       and 'leftS=Math.ceil(body.length*rv)' in html
+       and "drawCard($('plCanvas'),cardIdx,true,rv)" in html
+       and 'rv = max(0.0, min(1.0, float(reveal)))' in rend
+       and 'reveal=ratio' in prod)
+    ck('r32 字幕轨逐字打字机生效、视频帧模式字幕整片',
+       'const tw=!!cfg.typewriter&&cfg.frame===false;' in html
+       and "TW.target==='subtitle')" in html
+       and '字幕轨逐字（打字机）' in html)
+    ck('r32 描边颜色/宽度控件彻底移除，改为字间距',
+       'id="subOutline"' not in html and 'subOutlineW' not in html
+       and 'outline_width' not in html and "ctx.strokeText(part" not in html
+       and 'id="subLetter"' in html and 'letter_spacing' in html
+       and 'Outline=0' in prod and 'Spacing=%d' in prod
+       and ",0,0,%d,%d,10,%d,1'" in tts_src)
+    ck('r32 片头片尾不画字幕块（替代 r23 字幕带）',
+       "if(cardIdx!==null){" in html and 'window.__subDraw=null' in html
+       and "_k in ('open', 'close', 'opening', 'closing', 'window')" in tts_src)
+    ck('r33 片尾恢复单个「资讯窗口」框，页面与服务端同源、不与免责/字幕重叠',
+       "ctx.fillText('资讯窗口',62,boxY+40)" in html
+       and 'window_box:true' in html
+       and "d.rounded_rectangle([pad, win_by, W - pad, win_by + win_bh]" in prod
+       and "'昨日 20:00 — 今日 20:00'" in prod
+       and 'window_box' in prod
+       and "if kind_norm in ('window', 'close'):" in prod
+       and "if(cardIdx!==null){" in html)
+    ck('r32 封面底部改为条数说明、去掉 1 / 1',
+       "const foot='本期共有 '+_tot+' 条资讯，仅展示 '+_sh+' 条'" in html
+       and "'1 / 1'" not in html and "'1 / 1'" not in rend
+       and "foot = '本期共有 %d 条资讯，仅展示 %d 条'" in rend)
+    ck('r32 全文不再出现旧品牌名',
+       all('\u6bcf\u65e5\u8981\u95fb' not in open(os.path.join(ROOT, f), encoding='utf-8').read() for f in
+           ('index.html', 'data.js', 'data.json', 'data_source.json',
+            'render_manifest.json', 'cover_theme.json', 'video_card_theme.json',
+            '口播文稿.md', '封面清单.md')))
 
     bad = [c for c in CHECKS if not c['ok']]
     print('共 %d 项，失败 %d 项' % (len(CHECKS), len(bad)))

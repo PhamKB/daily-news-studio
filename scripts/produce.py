@@ -179,12 +179,21 @@ def simple_frame(root, text, size, out, acc_hex='#e6432f', reveal=1.0, theme='de
         R.txt(d, (pad, y), date_s, R.F(int(48 * u), root), sub)
         boxes.append([pad, y - int(48 * u), pad + int(720 * u), y + int(8 * u), 'date'])
         y += int(92 * u)
-    by = y + int(36 * u)
-    bh = int(H * (0.11 if vert else 0.16))
-    # r25：窗口说明句只留报头 + 日期 + 免责声明，不再单独画一页「资讯窗口」信息框。
-    # 片头已改为本期封面，这个框会与片头重复并让用户以为片头没改。
-    if kind_norm == 'window':
-        d.line([pad, by, W - pad, by], fill=line_c, width=1)
+    # r33：片尾 / 窗口帧恢复单个「资讯窗口」信息框；片头仍是本期封面，
+    # 不回退自建开场页；框高按免责线以上可用高度自适应，横版也不压免责。
+    win_by = y + int(28 * u)
+    win_bh = min(int(140 * u), max(int(96 * u),
+                 int(H - 284 * u - win_by - 24 * u)))
+    if kind_norm in ('window', 'close'):
+        d.rounded_rectangle([pad, win_by, W - pad, win_by + win_bh],
+                            radius=int(14 * u), outline=line_c,
+                            width=max(1, int(2 * u)))
+        R.txt(d, (pad + int(34 * u), win_by + int(26 * u)), '资讯窗口',
+              R.F(int(30 * u), root, True), sub, True)
+        R.txt(d, (pad + int(34 * u), win_by + int(70 * u)),
+              '昨日 20:00 — 今日 20:00', R.F(int(40 * u), root, True), fg, True)
+        boxes.append([pad + int(34 * u), win_by + int(18 * u),
+                      W - pad - int(34 * u), win_by + int(112 * u), 'window_box'])
     d.line([pad, H - int(284 * u), W - pad, H - int(284 * u)], fill=line_c, width=1)
     d1 = '内容依据公开信息整理，具体以官方发布为准；'
     d2 = '仅供参考，不构成投资、医疗或法律建议。'
@@ -326,7 +335,7 @@ def frames_for(root, manifest, voice, size, tw):
             p = os.path.join(outdir, 'f%03d.png' % seq)
             ratio = j / steps
             if card:
-                R.render_card(root, card, cfg, p)
+                R.render_card(root, card, cfg, p, reveal=ratio)
             elif s['kind'] == 'opening' and opening_from_cover(root, size, p, manifest):
                 pass
             else:
@@ -368,13 +377,13 @@ def sub_style(sub, W, H):
         back = _ass_color(sub.get('bg_color', '#040b12'), '%02X' % a)
     lines = max(1, min(5, int(sub.get('max_lines', 2))))
     margin_v = int(H * (0.05 + 0.012 * max(0, lines - 1)))
-    outline = max(0, min(8, int(sub.get('outline_width', 2))))
-    s = ("FontName=%s,FontSize=%d,PrimaryColour=%s,OutlineColour=%s,"
-         "BackColour=&H80000000,BorderStyle=%d,Outline=%d,Shadow=0,Alignment=%d,MarginV=%d"
+    spacing = max(0, min(12, int(sub.get('letter_spacing', 0))))
+    s = ("FontName=%s,FontSize=%d,PrimaryColour=%s,OutlineColour=&H00000000,"
+         "BackColour=&H80000000,BorderStyle=%d,Outline=0,Shadow=0,Alignment=%d,"
+         "MarginV=%d,Spacing=%d"
          % (sub.get('font', 'WenQuanYi Micro Hei'), fs,
             _ass_color(sub.get('color', '#FFFFFF')),
-            _ass_color(sub.get('outline_color', '#0d1b2a')),
-            border, outline, align, margin_v))
+            border, align, margin_v, spacing))
     return s.replace('&H80000000', back)
 
 
