@@ -19,7 +19,7 @@ INCLUDE = [
 ]
 INCLUDE += ['scripts/' + x for x in ['source.py', 'render.py', 'tts.py', 'produce.py',
                                      'daily_update.py', 'verify_release.py', '__init__.py']]
-INCLUDE += ['assets/fonts/wqy-microhei.ttc']
+INCLUDE += ['assets/fonts/wqy-microhei.ttc', 'assets/bgm/内置配乐.mp3']
 
 
 def api(method, path, token, body=None):
@@ -66,7 +66,7 @@ def main():
     a = ap.parse_args()
     global INCLUDE
     if a.incremental:
-        INCLUDE = [x for x in INCLUDE if not x.startswith('assets/')]
+        INCLUDE = [x for x in INCLUDE if x != 'assets/fonts/wqy-microhei.ttc']
     files = collect()
     print('待提交 %d 个文件，合计 %.2f MiB' % (len(files), sum(len(v) for v in files.values()) / 1048576))
     if a.dry_run:

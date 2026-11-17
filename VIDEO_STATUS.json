@@ -1,47 +1,13 @@
 {
-  "ok": true,
-  "real_voice": true,
-  "voice_mode": "libretts",
-  "audio": {
-    "path": "media/今日播报.mp3",
-    "duration": 1276.272,
-    "streams": [
-      "audio"
-    ],
-    "mean_db": -16.4
-  },
-  "subtitle_on": true,
-  "subtitle_burned": true,
-  "subtitle_count": 33,
-  "subtitle_chunk_count": 256,
-  "typewriter": true,
-  "typewriter_target": "frame",
-  "subtitle_typewriter": false,
+  "ok": false,
+  "real_voice": false,
+  "voice_mode": null,
+  "versions": {},
   "export_size": "portrait",
-  "card_count": 30,
-  "segment_count": 33,
-  "card_overflow": [],
-  "versions": {
-    "portrait": {
-      "duration": 1276.245,
-      "streams": [
-        "video",
-        "audio",
-        "subtitle"
-      ],
-      "video": true,
-      "audio": true,
-      "soft_subtitle": true,
-      "burned_subtitle": true,
-      "size": [
-        1080,
-        1920
-      ],
-      "bytes": 20916270,
-      "path": "media/今日要闻_竖版9比16.mp4"
-    }
-  },
-  "errors": [],
-  "frame_count": 444,
-  "timeline_file": "media/timeline.json"
+  "subtitle_burned": false,
+  "subtitle_on": true,
+  "errors": [
+    "首次 Actions 前无成品"
+  ],
+  "note": "随包占位，不代表云端已出片"
 }

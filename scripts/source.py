@@ -280,9 +280,9 @@ def build_semantic(payload, count=None):
     cover = payload.get('cover') or []
     news = payload.get('news') or []
     try:
-        n = int(count if count is not None else payload.get('cover_count') or 8)
+        n = int(count if count is not None else payload.get('cover_count') or 10)
     except (TypeError, ValueError):
-        n = 8
+        n = 10
     n = max(1, min(n, len(cover), 10))
     items = cover[:n]
 
@@ -487,7 +487,7 @@ def build_outputs(root, p, cfg):
     """生成 data.json / 口播稿 / 封面清单 / video_cards.json / render_manifest.json。"""
     GATES.clear()
     news, cover = p['news'], p['cover']
-    cc = (cfg.get('cover_theme') or {}).get('count', cfg.get('cover_count', 8))
+    cc = (cfg.get('cover_theme') or {}).get('count', cfg.get('cover_count', 10))
     try:
         cc = int(cc)
     except (TypeError, ValueError):

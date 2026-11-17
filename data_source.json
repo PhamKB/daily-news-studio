@@ -47,9 +47,9 @@
     "master_gain_db": 0.0
   },
   "bgm": {
-    "file": null,
+    "file": "assets/bgm/内置配乐.mp3",
     "volume": 0.3,
-    "note": "配乐仅自定义上传；点「不配乐」时为纯人声。",
+    "note": "默认内置配乐随包附带；可上传自定义音频替换或点「不配乐」。",
     "duck": false,
     "duck_db": -8,
     "fade_in": 0.0,
@@ -95,7 +95,7 @@
       "show_date": true,
       "show_issue": true
     },
-    "count": 8,
+    "count": 10,
     "semantic": {
       "mode": "L1"
     },
@@ -852,7 +852,7 @@
     "note": "无定时；内容更新由 Actions 手动 Run workflow 触发。"
   },
   "issue_mode": "auto",
-  "cover_count": 8,
+  "cover_count": 10,
   "semantic_columns": [
     "数值",
     "单位",

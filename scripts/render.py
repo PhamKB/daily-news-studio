@@ -349,7 +349,7 @@ def _card_bg(root, card, W, H, theme):
 
 def cover_count(cfg, payload):
     """显示条数：来自 cover_theme.json / data_source.json / data.json，缺省 8。"""
-    v = cfg.get('count', payload.get('cover_count', 8))
+    v = cfg.get('count', payload.get('cover_count', 10))
     try:
         v = int(v)
     except (TypeError, ValueError):
@@ -1570,11 +1570,15 @@ def render_semantic_cover(root, payload, cfg, out_path, meta_path=None):
                                 cy, _cis[1], 22 * u, 'topic', rowh=rh)
             cy = e + 16 * u
         if rest:
+            # r38：封面默认 10 条后 rest 变 6 行。旧版按估算 cy_t 反推 rh，
+            # 最后一行文字压到页脚；这里按专题段画完后的真实 y 再收一次行高。
+            avail_rest = H - footer_h - 20 * u - cy - 54 * u - len(rest) * row_gap
+            rh_rest = max(58 * u, min(rh, avail_rest / max(1, len(rest))))
             e, _ = list_section('其余要闻 · %d 条' % len(rest), rest,
                                 pad + 26 * u, W - pad - 26 * u, cy,
-                                _cis[1], 22 * u, 'rest', rowh=rh)
+                                _cis[1], 22 * u, 'rest', rowh=rh_rest)
             cy = e
-            boxes.append([pad + 26 * u, cy - rh, W - pad - 26 * u, cy])
+            boxes.append([pad + 26 * u, cy - rh_rest, W - pad - 26 * u, cy])
 
     # ------------------------------------------------------------ 横版：整条骨架重排
     # 弃用「左竖长头卡 + 右 7 行小字」：改为 报头横贯 → 头条横带 → 下半双栏列表。

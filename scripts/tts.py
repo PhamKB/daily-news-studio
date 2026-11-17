@@ -161,6 +161,21 @@ def _concat2(a, b, out):
     return out
 
 
+def _concat3(a, b, c, out):
+    """r38：标题段 + 静音补齐 + 摘要段，三段同采样率/声道后拼接。"""
+    subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', a, '-i', b, '-i', c,
+                    '-filter_complex',
+                    '[0:a]aresample=24000,aformat=channel_layouts=mono[a0];'
+                    '[1:a]aresample=24000,aformat=channel_layouts=mono[a1];'
+                    '[2:a]aresample=24000,aformat=channel_layouts=mono[a2];'
+                    '[a0][a1][a2]concat=n=3:v=0:a=1[out]',
+                    '-map', '[out]', '-ar', '24000', '-ac', '1',
+                    '-c:a', 'libmp3lame', '-b:a', '96k', out], check=True)
+    if not os.path.isfile(out) or os.path.getsize(out) < 512:
+        raise VoiceError('三段音频拼接失败：' + out)
+    return out
+
+
 def _split_spoken(seg):
     """返回 (标题段, 摘要段)；无法可靠拆分时回退整句合成。"""
     full = str(seg.get('text') or '')
@@ -207,8 +222,21 @@ def _synth_parallel(root, manifest, cfg, segs, outdir, fetcher, tag):
             if not (os.path.isfile(lp) and os.path.getsize(lp) > 512 and
                     os.path.isfile(bp) and os.path.getsize(bp) > 512):
                 raise VoiceError('%s 第 %d 句分段输出为空' % (tag, k + 1))
-            _concat2(lp, bp, p)
-            lead_dur = _probe_dur(lp)
+            ld = _probe_dur(lp)
+            bd = _probe_dur(bp)
+            # r38：标题段/摘要段每字同速 —— 目标标题时长 = 摘要时长 × 标题字数 / 摘要字数。
+            # 标题音频偏短时补静音，让 lead_dur 归一，人声摘要起点与文字摘要起点对齐。
+            tn = len(lead_text)
+            bn = max(1, len(body_text))
+            target = bd * tn / bn
+            pad = max(0.0, target - ld)
+            if pad > .02:
+                sil = os.path.join(outdir, 'sil_%s_%.3f.wav' % (key, pad))
+                _wav_silence(sil, pad)
+                _concat3(lp, sil, bp, p)
+            else:
+                _concat2(lp, bp, p)
+            lead_dur = max(ld, target)
             cached = lhit and bhit
         elif not hit:
             fetcher(seg['text'], p)

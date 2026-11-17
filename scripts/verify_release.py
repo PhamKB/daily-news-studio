@@ -34,7 +34,7 @@ def main():
 
     data = load('data.json')
     ct = load('cover_theme.json')
-    cc = int(ct.get('count', 8))
+    cc = int(ct.get('count', 10))
     ck('封面条数可设置且合法', 1 <= cc <= 10, cc)
     js = open(os.path.join(ROOT, 'data.js'), encoding='utf-8').read()
     m = re.search(r'window\.__LIVE_DATA__=(\{.*\});', js, re.S)
@@ -241,10 +241,14 @@ def main():
     ck('封面字号不随条数放大（服务端）', 'while title_fs < max_fs' not in rend and 'fixed_font' in rend)
     ck('封面资讯整体垂直居中（前后端）', "'centered': True" in rend
        and 'centered:true' in html and 'whitespace:Math.round' in html)
-    ck('内置曲库已移除', 'id="bgmLib"' not in html and 'id="btnBgmStop"' not in html
+    ck('默认内置配乐随包附带且可切换', 'id="bgmLib"' not in html and 'id="btnBgmStop"' not in html
        and '"bgm_library":' not in open(os.path.join(ROOT, 'data.js'), encoding='utf-8').read()
-       and 'bgm_library_note' not in open(os.path.join(ROOT, 'data.js'), encoding='utf-8').read()
-       and not os.path.isdir(os.path.join(ROOT, 'assets', 'bgm')))
+       and "const BUILTIN_BGM='assets/bgm/内置配乐.mp3'" in html
+       and 'id="btnBgmBuiltin"' in html and 'background:BUILTIN_BGM' in html
+       and os.path.isfile(os.path.join(ROOT, 'assets', 'bgm', '内置配乐.mp3'))
+       and 'assets/bgm/内置配乐.mp3' in open(os.path.join(ROOT, 'deploy.py'), encoding='utf-8').read()
+       and mf['config']['bgm'].get('file') == 'assets/bgm/内置配乐.mp3'
+       and load('data_source.json')['bgm'].get('file') == 'assets/bgm/内置配乐.mp3')
     ck('试听为单按钮 toggle', 'id="btnBgmPreview"' in html and 'id="btnBgmStop"' not in html
        and "a.pause();a.currentTime=0;" in html and 'bgmPreviewing=true' in html)
     ck('播放器四控件齐备', all(('id="%s"' % x) in html for x in
@@ -563,11 +567,11 @@ def main():
        and 'const scale=Math.min(W,H)/1080' in html
        and (not vs.get('ok') or vs.get('card_overflow') == []))
 
-    ck('封面默认显示 8 条，且各源同源',
-       "count:8" in html and 'value="8"' in html
-       and "payload.get('cover_count', 8)" in rend
-       and "payload.get('cover_count') or 8" in src_py
-       and int(data.get('cover_count', 0)) == cc
+    ck('封面默认显示 10 条，且各源同源',
+       "count:10" in html and 'value="10"' in html
+       and "payload.get('cover_count', 10)" in rend
+       and "payload.get('cover_count') or 10" in src_py
+       and int(data.get('cover_count', 0)) == cc == 10
        and int(ds.get('cover_count', 0)) == cc
        and int(ct.get('count', 0)) == cc)
     ck('语义列表不再逐条缩字号，整组统一字号',
@@ -664,7 +668,7 @@ def main():
     ck('页面默认值与内嵌 payload 已改今日要闻速览',
        'value="今日要闻速览"' in html and '"title": "今日要闻速览"' in html)
     ck('旧浏览器状态自动迁移，换包刷新不会残留旧品牌名',
-       "const STATE_VER='r37-1'" in html and "\\u6bcf\\u65e5" in html
+       "const STATE_VER='r38-1'" in html and "\\u6bcf\\u65e5" in html
        and "S.cover.title=DEF.cover.title" in html
        and "split(OLD_BRAND).join('今日要闻速览')" in html)
 
@@ -745,7 +749,7 @@ def main():
        "'opening': 'open'" in prod and "'closing': 'close'" in prod
        and 'kind_norm' in prod and 'labels.get(kind_norm' in prod
        and "if kind_norm == 'close'" in prod)
-    ck('旧浏览器状态迁移到 r37-1', "const STATE_VER='r37-1'" in html
+    ck('旧浏览器状态迁移到 r37-1', "const STATE_VER='r38-1'" in html
        and 'itemFont' in html and "if(o.__ver!==STATE_VER)" in html)
 
     ck('stillimage 调优', "'-tune', 'stillimage'" in prod)
@@ -909,7 +913,7 @@ def main():
        "background_style" in prod and "max_lines" in prod and "'navy': '&H8C2A1B0D'" in prod
        and "style == 'custom'" in prod and "bg_alpha" in prod and "letter_spacing" in prod
        and "bg_alpha" in src and "letter_spacing" in src)
-    ck('STATE_VER 升级且旧状态迁移', "const STATE_VER='r37-1'" in html and 'S.shared={theme:' in html
+    ck('STATE_VER 升级且旧状态迁移', "const STATE_VER='r38-1'" in html and 'S.shared={theme:' in html
        and 'S.typewriter.on=true' in html)
     # ---- r23 防回归 ----
     ck('r23 文稿改标题/删除/调序/条数后封面同源重绘',
@@ -962,8 +966,10 @@ def main():
        and "sub.textContent=twFrm" not in html
        and 'subBgFill' in html)
     ck('r30 人声文字同步：页面与服务端用同一 lead 公式',
-       'window.__subSync' in html and 'leadDur=durs[i]*lead/Math.max(1,_fullLen)' in html
-       and 'subDur=Math.max(.2,durs[i]-leadDur)' in html
+       'window.__subSync' in html
+       and 'function frameLeadDur(du,fullLen,subLen,realLead)' in html
+       and 'let leadDur=_fk?_fk.lead:durs[i]*lead/Math.max(1,_fullLen)' in html
+       and 'const subDur=Math.max(.2,(_fk?_fk.dur:durs[i])-leadDur)' in html
        and "lead_dur = s['dur'] * lead / max(1, len(str(full)))" in tts_src
        and 'leadRatio' not in html)
     ck('r30 折行按语义单元，不拆数字/小数/单位',
@@ -1036,7 +1042,7 @@ def main():
        and 'drawCategoryArt(ctx,W,H,c,S.card.category_art' in html
        and "category_art:S.card.category_art||'off'" in html)
     ck('r25 页面有可见构建标记，Ctrl+F5 后可确认线上是否已换包',
-       'r37 · 11-17' in html and 'r35 · 11-17' not in html)
+       'r38 · 11-17' in html and 'r35 · 11-17' not in html)
     ck('r25 分类纹样下移到中下部留白区，前后端同源且不再压标题与摘要',
        'cy=H*.66' in html and 'int(H * 0.66)' in rend
        and 'Math.min(W,H)*.17' in html and 'int(min(W, H) * 0.17)' in rend
@@ -1052,7 +1058,9 @@ def main():
        and "drawCard($('plCanvas'),cardIdx,true,rv)" in html
        and 'rv_t = rv_s = rv' in rend)
     ck('r30 字幕起始对齐人声：页面与服务端同一 lead 公式（不再用估算上限）',
-       'window.__subSync' in html and 'leadDur=durs[i]*lead/Math.max(1,_fullLen)' in html
+       'window.__subSync' in html
+       and 'function frameLeadDur(du,fullLen,subLen,realLead)' in html
+       and 'let leadDur=_fk?_fk.lead:durs[i]*lead/Math.max(1,_fullLen)' in html
        and 'leadRatio' not in html
        and 'lead_dur = s[\'dur\'] * lead / max(1, len(str(full)))' in tts_src
        and 'st_sub' in tts_src)
@@ -1137,7 +1145,7 @@ def main():
                for s in mf['segments'])
        and '不构成投资' not in str(data.get('close') or '')
        and '不构成投资' not in str(ds.get('closing') or ''))
-    ck('r34 可见标记已升级', 'r37 · 11-17' in html and 'r35 · 11-17' not in html)
+    ck('r34 可见标记已升级', 'r38 · 11-17' in html and 'r35 · 11-17' not in html)
 
     ck('r32 全文不再出现旧品牌名',
        all('\u6bcf\u65e5\u8981\u95fb' not in open(os.path.join(ROOT, f), encoding='utf-8').read() for f in
@@ -1149,7 +1157,8 @@ def main():
     ck('r35 视频帧逐字用真实分段 lead_dur，标题先出、摘要后出，底部无第二层字幕',
        'function stripDisclaimerText' in html
        and 'const _leadArr=(S.leadDurs&&S.leadDurs.length===seg.length)' in html
-       and 'if(_realLead>0)leadDur=' in html
+       and 'if(!_fk&&_realLead>0)leadDur=' in html
+       and 'function frameLeadDur(du,fullLen,subLen,realLead)' in html
        and 'async function concatAudioBlobs' in html
        and 'function frameVoiceParts' in html
        and 'lead_dur:leadDur' in html
@@ -1169,7 +1178,7 @@ def main():
                for s in mf['segments'])
        and '仅供参考，不构成' not in str(data.get('close') or '')
        and '仅供参考，不构成' not in str(ds.get('closing') or ''))
-    ck('r35 可见标记已升级', 'r37 · 11-17' in html and 'r35 · 11-17' not in html)
+    ck('r35 可见标记已升级', 'r38 · 11-17' in html and 'r35 · 11-17' not in html)
     # ---------------- r37 ----------------
     ck('r37 视频帧 tab 的 cdCanvas 也按人声分段逐字绘制（此前永远画完整卡）',
        'function frameReveal(pos,dur,lead)' in html
@@ -1187,6 +1196,49 @@ def main():
        and 'pts = [_lead * k / n_t' in prod
        and 'out.append((p, max(0.01, (ratio - prev) * du)))' in prod
        and 'du / steps' not in prod)
+
+
+    # ---------------- r38 ----------------
+    ck('r38 标题与摘要每字同速：lead_dur 按字数比例归一且人声摘要起点对齐',
+       'r38：标题段与摘要段每字同速' in html
+       and 'const target=bd*tn/bn,pad=Math.max(0,target-ld)' in html
+       and 'concatAudioBlobs([lb,bb],pad)' in html
+       and 'leadDur=Math.max(ld,target)' in html
+       and 'const pad=Math.max(0,Math.round((padSec||0)*sr))' in html
+       and 'target = bd * tn / bn' in tts_src
+       and 'def _concat3(' in tts_src
+       and 'lead_dur = max(ld, target)' in tts_src)
+    ck('r38 默认内置配乐：页面 / 配置 / deploy / 云端出片同源',
+       "const BUILTIN_BGM='assets/bgm/内置配乐.mp3'" in html
+       and 'id="btnBgmBuiltin"' in html
+       and "background:BUILTIN_BGM" in html
+       and 'S.bgm.background===BUILTIN_BGM?BUILTIN_BGM' in html
+       and os.path.isfile(os.path.join(ROOT, 'assets', 'bgm', '内置配乐.mp3'))
+       and "'assets/bgm/内置配乐.mp3'" in open(os.path.join(ROOT, 'deploy.py'), encoding='utf-8').read()
+       and mf['config']['bgm'].get('file') == 'assets/bgm/内置配乐.mp3'
+       and load('data_source.json')['bgm'].get('file') == 'assets/bgm/内置配乐.mp3')
+    ck('r38 封面默认 10 条且配置 / 清单 / 服务端同源',
+       'count:10' in html and 'value="10"' in html
+       and "payload.get('cover_count', 10)" in rend
+       and "payload.get('cover_count') or 10" in src_py
+       and int(data.get('cover_count', 0)) == 10
+       and int(ds.get('cover_count', 0)) == 10
+       and int(ct.get('count', 0)) == 10
+       and mf.get('cover_count') == 10
+       and mf['config']['cover'].get('count') == 10)
+
+    ck('r38 封面 10 条时 rest 行高按真实剩余高度收敛，前后端同源不压页脚',
+       'avail_rest = H - footer_h - 20 * u - cy - 54 * u - len(rest) * row_gap' in rend
+       and 'rh_rest = max(58 * u, min(rh, avail_rest / max(1, len(rest))))' in rend
+       and 'const availRest=H-footerH-20*u-cy-54*u-rs.length*RH_GAP' in html
+       and 'const rhRest=Math.max(58*u,Math.min(rh,availRest/Math.max(1,rs.length)))' in html)
+
+    ck('r38 标题与摘要每字同速且占位音轨不再让标题一眨眼',
+       'function frameLeadDur(du,fullLen,subLen,realLead)' in html
+       and 'const perChar=.14,plausible=total*perChar*.62' in html
+       and 'const prop=D*lc/total' in html
+       and 'const k=frameLeadDur(du,full.length,sub.length,real)' in html
+       and 'const _fk=twFrm?frameLeadDur(durs[i],_fullLen,_subLen,_realLead):null' in html)
 
     bad = [c for c in CHECKS if not c['ok']]
     print('共 %d 项，失败 %d 项' % (len(CHECKS), len(bad)))

@@ -768,7 +768,7 @@
     ]
   },
   "export_size": "portrait",
-  "cover_count": 8,
+  "cover_count": 10,
   "cover": [
     {
       "rank": 1,
@@ -866,7 +866,7 @@
     "mode": "L1",
     "enabled": true,
     "note": "字段全部来自表格可选列；未填列时不推断、不自动抽取，版式按素材自动选择",
-    "count": 8,
+    "count": 10,
     "hero": {
       "index": 1,
       "rank": 1,
@@ -942,6 +942,18 @@
         "rank": 8,
         "title": "中央气象台每日天气提示：云南南部及华南降雨增多，华北黄淮大气扩散条件转差",
         "board": "公共安全与出行"
+      },
+      {
+        "index": 9,
+        "rank": 9,
+        "title": "中新网：国台办指「双十一」消费热见证两岸生活方式相通",
+        "board": "民生服务"
+      },
+      {
+        "index": 10,
+        "rank": 10,
+        "title": "中汽协：10 月新能源汽车新车销量占比达 64.3%，汽车产销双双超过 300 万辆",
+        "board": "产业经济"
       }
     ],
     "boards": [
@@ -952,7 +964,7 @@
     ],
     "stats": [
       {
-        "num": "8",
+        "num": "10",
         "label": "条要闻"
       },
       {
@@ -965,7 +977,7 @@
       }
     ],
     "topic_count": 3,
-    "rest_count": 4,
+    "rest_count": 6,
     "columns": [
       "数值",
       "单位",
@@ -995,13 +1007,14 @@
       "retries": 2
     },
     "bgm": {
-      "file": null,
+      "file": "assets/bgm/内置配乐.mp3",
       "volume": 0.3,
-      "enabled": false,
+      "enabled": true,
       "duck": false,
       "duck_db": -8.0,
       "fade_in": 0.0,
-      "fade_out": 0.0
+      "fade_out": 0.0,
+      "note": "默认内置配乐随包附带；可上传自定义音频替换或点「不配乐」。"
     },
     "mix": {
       "voice_volume": 1.35,
@@ -1086,7 +1099,7 @@
         "show_date": true,
         "show_issue": true
       },
-      "count": 8,
+      "count": 10,
       "semantic": {
         "mode": "L1",
         "columns": [
