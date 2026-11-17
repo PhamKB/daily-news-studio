@@ -225,6 +225,11 @@ def main():
     ck('deploy 提交后回读 ref 校验', "head != nc" in dep and "raise RuntimeError('提交后回读不一致" in dep)
     ck('deploy 自动触发 Actions', "actions/workflows/daily.yml/dispatches" in dep)
     ck('deploy 提交信息带时间戳', "%Y-%m-%dT%H:%MZ" in dep)
+    ck('rebuild 提交前同步远端且处理分叉',
+       'git fetch origin main' in yml
+       and 'git merge-base --is-ancestor origin/main HEAD' in yml
+       and '-s ours origin/main' in yml
+       and 'git push origin HEAD:main' in yml)
     ck('片头优先用本期封面图', "opening_from_cover" in prod and "s['kind'] == 'opening'" in prod)
     ck('五平台尺寸已进页面', all((k + ':{n:') in html
                               for k in ('xhs', 'wechat', 'square')))
