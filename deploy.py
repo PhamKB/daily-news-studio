@@ -86,7 +86,7 @@ def main():
         print('  +', rel, len(data))
     nt = api('POST', base + '/git/trees', a.token, {'base_tree': tree, 'tree': entries})['sha']
     nc = api('POST', base + '/git/commits', a.token,
-             {'message': 'chore: 每日要闻工作台 %s · %d 文件' % (stamp, len(entries)),
+             {'message': 'chore: 今日要闻工作台 %s · %d 文件' % (stamp, len(entries)),
               'tree': nt, 'parents': [ref]})['sha']
     api('PATCH', base + '/git/refs/heads/' + a.branch, a.token, {'sha': nc})
     # 回读校验：PATCH 返回 2xx 不等于分支真的指向新提交
@@ -100,7 +100,7 @@ def main():
         try:
             api('POST', base + '/actions/workflows/daily.yml/dispatches', a.token,
                 {'ref': a.branch})
-            print('        已自动触发 Actions「每日要闻手动重建」，等 2-5 分钟后 Ctrl+F5。')
+            print('        已自动触发 Actions「今日要闻手动重建」，等 2-5 分钟后 Ctrl+F5。')
         except Exception as e:
             print('        警告：自动触发失败，请到 Actions 手动 Run workflow 一次。原因：%s' % e,
                   file=sys.stderr)

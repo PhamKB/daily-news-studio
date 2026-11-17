@@ -1,4 +1,4 @@
-name: 每日要闻手动重建
+name: 今日要闻手动重建
 # 无自动触发。内容更新：Actions -> Run workflow 手动触发一次。
 # 页面不展示、不可配任何触发策略；本文件 on: 段只有手动触发。
 on:
@@ -55,7 +55,7 @@ jobs:
           git config user.name "daily-news-bot"
           git config user.email "bot@users.noreply.github.com"
           git add data.js data.json 口播文稿.md 封面清单.md render_manifest.json BUILD_STATUS.json VIDEO_STATUS.json media/ data_source.json cover_theme.json || true
-          if git diff --cached --quiet; then echo '本期无变化'; else git commit -m "chore: 每日要闻重建 $(date -u +%Y-%m-%dT%H:%MZ)" && git push; fi
+          if git diff --cached --quiet; then echo '本期无变化'; else git commit -m "chore: 今日要闻重建 $(date -u +%Y-%m-%dT%H:%MZ)" && git push; fi
 
       - name: 上传 Pages 站点包
         uses: actions/upload-pages-artifact@v3

@@ -256,12 +256,14 @@ def subtitle_chunks(text):
     # r28：1 行不再整句横向滚动；1–5 行按 15×行数 字分片，行数真生效
     cap = int(round(SUB_CHUNK_MAX * ml / 2))
     out, cur = [], ''
+    # r31：句末标点只在片段接近满长时才切。旧版每个句号都切，
+    # 3 行模式常切出十来字，再被均分成 3 行就成了「每行几个字居中」。
     for ch in s:
         cur += ch
-        if len(cur) >= cap or ch in '。！？；':
+        if len(cur) >= cap or (ch in '。！？；' and len(cur) >= cap * 0.75):
             out.append(cur)
             cur = ''
-        elif ch in '，、' and len(cur) >= cap - 8:
+        elif ch in '，、' and len(cur) >= cap * 0.85:
             out.append(cur)
             cur = ''
     if cur:
@@ -269,14 +271,80 @@ def subtitle_chunks(text):
     return out or [' ']
 
 
-def chunk_lines(text, ml):
-    """r23：ASS WrapStyle=2 不自动折行，按行数硬插换行，行数设置才真正生效。"""
-    s = str(text or '')
+SUB_LINE_UNITS = 15
+
+
+def _sub_units(s):
+    """显示宽度：中文/全角标点 1，ASCII 字母数字 .55，其余 .5。"""
+    u = 0.0
+    for ch in str(s):
+        o = ord(ch)
+        if 0x4E00 <= o <= 0x9FFF or 0x3000 <= o <= 0x303F or 0xFF00 <= o <= 0xFFEF:
+            u += 1.0
+        elif ch.isascii() and (ch.isalnum() or ch in '._%-'):
+            u += 0.55
+        else:
+            u += 0.5
+    return u
+
+
+def chunk_lines(text, ml, want=0):
+    """r31：每行按 15 个全角单位填满、左对齐；不再按字数均分（旧版 per=ceil(len/ml)
+    会把 20 字切成 3 行每行 6 字，居中后左右空一大块）。
+    r31b：want = 同句所有片段共用的行数；短片段按更窄目标宽度补足到同样行数，
+    选 N 行时全程 N 行，不再 2 行/3 行来回跳。
+    数字 / 小数 / 英文串 / 单位整块不拆，标点不落行首。"""
+    s = re.sub(r'[\r\n]+', '', str(text or ''))
     ml = max(1, min(5, int(ml)))
     if ml == 1 or len(s) < 4:
         return s
-    per = max(1, int(math.ceil(len(s) / ml)))
-    return '\n'.join(s[i:i + per] for i in range(0, len(s), per))
+    toks = re.findall(
+        r'\d+(?:\.\d+)?(?:%|元|点|时|分|秒|年|月|日|个|条|万|亿|升|米|公里|吨)?'
+        r'|[A-Za-z][A-Za-z0-9._-]*|[\u4e00-\u9fa5]|[^\s]', s)
+    lim = float(SUB_LINE_UNITS)
+
+    def wrap_at(width):
+        out, row = [], ''
+        for tk in toks:
+            if row and _sub_units(row + tk) > width and len(out) < ml - 1:
+                out.append(row); row = tk
+            else:
+                row += tk
+        if row:
+            out.append(row)
+        if len(out) > ml:
+            out = out[:ml - 1] + [''.join(out[ml - 1:])]
+        for i in range(1, len(out)):
+            if out[i] and out[i][0] in '，。！？；：、,.!?;:' and out[i - 1]:
+                out[i - 1] += out[i][0]
+                out[i] = out[i][1:]
+        return [r for r in out if r][:ml]
+
+    rows = wrap_at(lim)
+    target = max(1, min(ml, int(want or 0)))
+    if target > 1 and len(rows) != target:
+        lo, hi, best = 1.0, lim, rows
+        for _ in range(24):
+            mid = (lo + hi) / 2.0
+            r = wrap_at(mid)
+            if len(r) == target:
+                best = r; break
+            if len(r) > target:
+                lo = mid
+            else:
+                hi = mid; best = r
+        rows = best
+        guard = 0
+        while len(rows) < target and guard < 12:
+            guard += 1
+            bi = max(range(len(rows)), key=lambda i: _sub_units(rows[i]))
+            r = rows[bi]
+            if len(r) < 2:
+                break
+            cut = max(1, len(r) // 2)
+            rows[bi:bi + 1] = [r[:cut], r[cut:]]
+        rows = rows[:ml]
+    return '\n'.join(rows)
 
 
 def build_srt(root, voice, manifest, path):
@@ -310,6 +378,7 @@ def build_srt(root, voice, manifest, path):
         st_sub = st + lead_dur
         dur_sub = max(0.2, s['dur'] - lead_dur)
         chunks = subtitle_chunks(text)
+        # r31b：按可用宽度填满、行数 N 为上限；不按字数均分，与页面 canvas / ASS 一致
         tot = sum(len(c) for c in chunks) or 1
         ct = st_sub
         for chunk in chunks:
@@ -348,9 +417,11 @@ def build_ass(root, voice, manifest, path, W, H):
         return c.replace('\\', '／').replace('{', '(').replace('}', ')').replace('\n', ' ')
 
     fs = max(16, int(int(sub.get('font_size', 44)) * H / 1080.0))
-    align = {'bottom': 2, 'center': 5, 'top': 8}.get(sub.get('position', 'bottom'), 2)
+    # r31b：与画面帧一致左对齐（1/4/7 是左列），不再让短行居中、两侧空一大块
+    align = {'bottom': 1, 'center': 4, 'top': 7}.get(sub.get('position', 'bottom'), 1)
     border = 3 if sub.get('background', True) else 1
     margin_v = int(H * 0.05)
+    margin_l = int(W * 0.045)
     primary = color(sub.get('color', '#FFFFFF'), '00')
     # &HFF...... = alpha FF = 完全透明，未「打」到的字不可见
     secondary = '&HFF000000'
@@ -364,8 +435,8 @@ def build_ass(root, voice, manifest, path, W, H):
         'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, '
         'BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, '
         'BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding',
-        'Style: Default,%s,%d,%s,%s,%s,&H80000000,0,0,0,0,100,100,0,0,%d,2,0,%d,10,10,%d,1'
-        % (font, fs, primary, secondary, outline, border, align, margin_v), '',
+        'Style: Default,%s,%d,%s,%s,%s,&H80000000,0,0,0,0,100,100,0,0,%d,2,0,%d,%d,10,%d,1'
+        % (font, fs, primary, secondary, outline, border, align, margin_l, margin_v), '',
         '[Events]', 'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text',
     ]
     t = 0.0
@@ -384,23 +455,28 @@ def build_ass(root, voice, manifest, path, W, H):
         st_sub = st + lead_dur
         dur_sub = max(0.2, s['dur'] - lead_dur)
         chunks = subtitle_chunks(text)
+        # r31b：按可用宽度填满、行数 N 为上限；不按字数均分，与页面 canvas / SRT 一致
         tot = sum(len(c) for c in chunks) or 1
         ct = st_sub
         for chunk in chunks:
             dur = dur_sub * len(chunk) / tot
             ce = ct + dur
-            chars = [c for c in chunk if c not in ('\r', '\n')]
-            if not chars:
-                chars = [' ']
+            rows = [r for r in chunk_lines(chunk, _ACTIVE_LINES).split('\n')]
+            flat = [c for r in rows for c in r] or [' ']
             total_cs = max(1, int(round(dur * 100)))
             # 每字均分厘秒，余数摊到前几个字，保证总和严格等于本片段时长
-            alloc = [total_cs // len(chars)] * len(chars)
+            alloc = [total_cs // len(flat)] * len(flat)
             for k in range(total_cs - sum(alloc)):
-                alloc[k % len(chars)] += 1
-            per = max(1, int(math.ceil(len(chars) / _ACTIVE_LINES)))
-            body = ''.join(('{\\N}' if j and j % per == 0 else '')
-                           + '{\\k%d}%s' % (alloc[j], esc(c))
-                           for j, c in enumerate(chars))
+                alloc[k % len(flat)] += 1
+            # r31：ASS 硬换行与页面 / SRT 同用 chunk_lines 的语义单元折行，
+            # 不再按字数均分（旧写法会切开「3600点」，也是 3 行时好时坏的根因）
+            it = iter(alloc)
+            body = ''
+            for ri, row in enumerate(rows):
+                if ri:
+                    body += '{\\N}'
+                for c in row:
+                    body += '{\\k%d}%s' % (next(it), esc(c))
             lines.append('Dialogue: 0,%s,%s,Default,,0,0,0,,%s' % (ts(ct), ts(ce), body))
             ct = ce
     os.makedirs(os.path.dirname(path) or '.', exist_ok=True)

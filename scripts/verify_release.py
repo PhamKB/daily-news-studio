@@ -46,7 +46,7 @@ def main():
         ck('data.js 封面基础数据 10 条', len(live.get('cover', [])) == 10)
         ck('data.js 显示条数同源', int(live.get('cover_count', cc)) == cc, live.get('cover_count'))
     ck('data.json 含 rebuilt_at', 'rebuilt_at' in data, data.get('rebuilt_at'))
-    ck('页面初版标记', '初版 · 每日要闻工作台' in html)
+    ck('页面初版标记', '初版 · 今日要闻工作台' in html)
     ck('页面无迭代话术', not any(x in html for x in
                             ['原文未' + '改', 'v' + '12.', 'v' + '13-', '沿用' + ' v',
                              '产品' + '版' + ' v', '修复' + '说明']))
@@ -387,10 +387,13 @@ def main():
        "item_count_shown:false" in html and 'window_once:true' in html
        and "ctx.fillText('本期 '+P.news.length" not in html
        and '免责声明' in prod and "'disclaimer': DISCLAIMER" in prod)
-    ck('字幕烧进视频画面', '.sublayer{display:none!important}' in html
+    ck('字幕烧进视频画面且只有单一 canvas 层', '.sublayer{display:none!important}' in html
        and 'function drawSubtitleCanvas(' in html
                and "drawSubtitleCanvas(ctx,$('plCanvas').width||540" in html
-        and 'band:window.__cardDrawSubBand' in html)
+        and 'band:window.__cardDrawSubBand' in html
+        and 'dom_layer:false' in html
+        and 'sub.style.whiteSpace' not in html
+        and "sub.textContent=twFrm" not in html)
     ck('时间轴可拖动指针定位', all(x in html for x in
        ('id="pbarHead"', 'id="tlHead"', 'function seekToRatio(', 'function bindSeek(',
         'setPointerCapture')))
@@ -629,7 +632,14 @@ def main():
     _brand_files = ['index.html', 'cover_theme.json', 'data.json', 'data_source.json',
                     'render_manifest.json', 'data.js', 'scripts/render.py',
                     'scripts/produce.py', 'scripts/source.py']
-    _old_brand = '每日' + '要闻速览'
+    _brand_files_all = [f for f in (
+        ['index.html','deploy.py','deploy.bat','.github/workflows/daily.yml',
+         'scripts/verify_release.py','scripts/source.py','scripts/produce.py',
+         'scripts/tts.py','scripts/render.py','scripts/daily_update.py',
+         'data.js','data.json','data_source.json','render_manifest.json',
+         'cover_theme.json','video_card_theme.json','口播文稿.md','封面清单.md'])
+        if os.path.isfile(os.path.join(ROOT, f))]
+    _old_brand = '\u6bcf\u65e5' + '\u8981\u95fb\u901f\u89c8'
     _residual = [f for f in _brand_files
                  if _old_brand in open(os.path.join(ROOT, f), encoding='utf-8').read()]
     ck('全链路品牌名统一为今日要闻速览', not _residual, _residual)
@@ -639,7 +649,7 @@ def main():
     ck('页面默认值与内嵌 payload 已改今日要闻速览',
        'value="今日要闻速览"' in html and '"title": "今日要闻速览"' in html)
     ck('旧浏览器状态自动迁移，换包刷新不会残留旧品牌名',
-       "const STATE_VER='r29-1'" in html and "const OLD_BRAND='每日'+'要闻速览'" in html
+       "const STATE_VER='r31-1'" in html and "\\u6bcf\\u65e5" in html
        and "S.cover.title=DEF.cover.title" in html
        and "split(OLD_BRAND).join('今日要闻速览')" in html)
 
@@ -712,7 +722,7 @@ def main():
        'chunks = subtitle_chunks(text)' in tts_src
        and 'for chunk in chunks:' in tts_src
        and 'subChunks(txt)' in html and 'subChunkAt(text,ratio)' in html
-               and 'subLayoutRows(cw.text,ml)' in html
+               and 'subLayoutRows(cw.text,ml,meas,rowLimit)' in html
         and 'const ml=Math.max(1,Math.min(5,+cfg.max_lines||2))' in html)
     ck('片尾帧顺序行盒登记 bbox 且做重叠自检',
        'overlap' in prod and 'outro_meta_' in prod and 'boxes' in prod)
@@ -720,7 +730,7 @@ def main():
        "'opening': 'open'" in prod and "'closing': 'close'" in prod
        and 'kind_norm' in prod and 'labels.get(kind_norm' in prod
        and "if kind_norm == 'close'" in prod)
-    ck('旧浏览器状态迁移到 r29-1', "const STATE_VER='r29-1'" in html
+    ck('旧浏览器状态迁移到 r30-1', "const STATE_VER='r31-1'" in html
        and 'itemFont' in html and "if(o.__ver!==STATE_VER)" in html)
 
     ck('stillimage 调优', "'-tune', 'stillimage'" in prod)
@@ -855,14 +865,20 @@ def main():
        ' const W=sz.w,H=sz.h;' in html and "if($('plCanvas').width!==_sz.w" in html
        and "ctx.scale(PW/540,PH/960)" in html
        and 'band:window.__cardDrawSubBand' in html)
-    ck('字幕底色四选一与显示行数下拉 1–5（5 个选项）',
+    ck('字幕底色/描边各自独立可调 + 显示行数下拉 1–5',
        all(x in html for x in ('<select id="subLines"', 'value="1">1 行', 'value="2" selected',
                                'value="3">3 行', 'value="4">4 行', 'value="5">5 行',
-                               'value="none"', 'value="navy"', 'value="accent"',
-                               'const SUB_BG=', 'function subMaxLines()', 'function subtitleSafeU()'))
+                               'value="none"', 'value="navy"', 'value="accent"', 'value="custom"',
+                               'id="subBgColor"', 'id="subBgAlpha"', 'id="subOutlineW"',
+                               'function subBgFill(', 'const SUB_BG=',
+                               'function subMaxLines()', 'function subtitleSafeU()'))
+       and '描边 / 底色' not in html
        and 'chips($(\'subLines\')' not in html)
-    ck('字幕配置导出同源（行数上限 5）',
+    ck('字幕配置导出同源（底色色值/透明度/描边宽/行数上限 5）',
        "background_style:S.subtitle.background_style" in html
+       and "bg_color:S.subtitle.bg_color" in html
+       and "bg_alpha:+S.subtitle.bg_alpha" in html
+       and "outline_width:+S.subtitle.outline_width" in html
        and "max_lines:Math.max(1,Math.min(5,+S.subtitle.max_lines||2))" in html
        and '$(\'subLines\').value=String(subMaxLines())' in html
        and "'subLines'" in html)
@@ -873,9 +889,11 @@ def main():
        and 'src_y = line2 + int((CARD_SRC_GAP_L if land else CARD_SRC_GAP_P) * u) + safe_u' in rend
        and 'def subtitle_safe_u(cfg)' in rend
        and "R.SUBTITLE_SAFE_U = R.subtitle_safe_u(src_cfg.get('subtitle'))" in _dpy)
-    ck('服务端字幕样式支持底色与行数',
-       "background_style" in prod and "max_lines" in prod and "'navy': '&H8C2A1B0D'" in prod)
-    ck('STATE_VER 升级且旧状态迁移', "const STATE_VER='r29-1'" in html and 'S.shared={theme:' in html
+    ck('服务端字幕样式支持自定义底色/透明度/描边宽与行数',
+       "background_style" in prod and "max_lines" in prod and "'navy': '&H8C2A1B0D'" in prod
+       and "style == 'custom'" in prod and "bg_alpha" in prod and "outline_width" in prod
+       and "bg_alpha" in src and "outline_width" in src)
+    ck('STATE_VER 升级且旧状态迁移', "const STATE_VER='r31-1'" in html and 'S.shared={theme:' in html
        and 'S.typewriter.on=true' in html)
     # ---- r23 防回归 ----
     ck('r23 文稿改标题/删除/调序/条数后封面同源重绘',
@@ -888,10 +906,13 @@ def main():
     ck('r23 画面不再显示字幕安全区标识',
        "fillText('字幕安全区'" not in html and "'字幕安全区'" not in rend
        and '字幕占位：' in html)
-    ck('r28 字幕行数 1–5 全链路真生效（页面 / DOM / SRT / ASS / 服务端同源）',
-       "if(ml===1)return[s||' ']" not in html and "sub.style.transform='none'" in html
+    ck('r30 字幕行数 1–5 全链路真生效（单一 canvas 层 / SRT / ASS / 服务端同源）',
+       "if(ml===1)return[s||' ']" not in html
+       and "sub.style.transform='none'" not in html
+       and "sub.style.whiteSpace='pre-line'" not in html
        and 'const cap=Math.round(SUB_CHUNK_MAX*ml/2)' in html
-       and 'function splitSubLines(' in html and "sub.style.whiteSpace='pre-line'" in html
+       and 'function splitSubLines(' in html and 'function subLayoutRows(' in html
+       and 'while(out.length<ml)out.push(\'\')' not in html
        and 'Math.min(5,+S.subtitle.max_lines||2)' in html
        and 'Math.min(5,+cfg.max_lines||2)' in html
        and '_ACTIVE_LINES' in tts_src and 'cap = int(round(SUB_CHUNK_MAX * ml / 2))' in tts_src
@@ -899,7 +920,8 @@ def main():
        and 'min(5, int(ml))' in tts_src
        and 'min(5, int(sub.get(\'max_lines\', 2)))' in prod
        and 'min(5, int(c.get(\'max_lines\', 2)))' in rend
-       and 'chunk_lines(chunk, _ACTIVE_LINES)' in tts_src and 'j % per == 0' in tts_src)
+       and 'chunk_lines(chunk, _ACTIVE_LINES)' in tts_src
+       and 'toks = re.findall(' in tts_src and 'j % per == 0' not in tts_src)
     ck('r28 force_style 路径可用：sub_style 返回字符串（元组 replace 旧 bug 已修）',
        "return s.replace('&H80000000', back)" in prod
        and 'margin_v).replace(' not in prod
@@ -913,24 +935,58 @@ def main():
        'id="bgmDrop"' in html and 'function applyBgmFile(' in html
        and 'dataTransfer.files' in html and "dz.addEventListener('drop'" in html
        and "$('bgmFile').onchange=()=>applyBgmFile" in html)
-    ck('r29 作用位置含「视频帧逐字」且 target 真被渲染读取',
-       '<option value="frame" selected>视频帧逐字</option>' in html
+    ck('r30 两种作用位置都画字幕（不再有「字幕逐字=空白」）',
+       '<option value="frame" selected>视频帧逐字（烧录进画面）</option>' in html
+       and 'value="subtitle"' in html and '字幕轨逐字' in html
        and "twFrm=(S.typewriter.target||'frame')==='frame'" in html
-       and 'enabled:twFrm' in html and "sub.textContent=twFrm?'':domLines.join" in html)
-    ck('r29 字幕正文取表格摘要而非标题，标题无句号也不回退',
-       'P.news[j].summary' in html and "const k=t.search(/[。！？!?]/)" in html)
+       and 'typewriter:twOn,frame:twFrm' in html
+       and 'const tw=!!cfg.typewriter&&cfg.frame!==false;' in html
+       and 'enabled:twFrm' not in html
+       and 'enabled===false' not in html
+       and "sub.textContent=twFrm" not in html
+       and 'subBgFill' in html)
+    ck('r30 人声文字同步：页面与服务端用同一 lead 公式',
+       'window.__subSync' in html and 'leadDur=durs[i]*lead/Math.max(1,_fullLen)' in html
+       and 'subDur=Math.max(.2,durs[i]-leadDur)' in html
+       and "lead_dur = s['dur'] * lead / max(1, len(str(full)))" in tts_src
+       and 'leadRatio' not in html)
+    ck('r30 折行按语义单元，不拆数字/小数/单位',
+       '\d+(?:\.\d+)?' in html
+       and '\d+(?:\.\d+)?' in tts_src
+       and 'const per=Math.max(1,Math.ceil(t.length/ml))' not in html
+       and 'const SUB_LINE_UNITS=15' in html
+       and 'row_widths:rowWidths.map(Math.round)' in html
+       and "text_align:'left'" in html)
+    ck('r30 全链路不含旧品牌名（含工作流/部署/说明）',
+       not any(x in open(os.path.join(ROOT,f),encoding='utf-8').read()
+               for x in ('\u6bcf\u65e5\u8981\u95fb',) for f in _brand_files_all))
+    ck('r30 字幕正文取表格摘要而非标题（页面与服务端同源）',
+       'P.news[j].summary' in html and "news[j].get('summary')" in src
+       and '0 <= j < len(news)' in src and "const k=t.search(/[。！？!?]/)" in html)
     ck('r29 ASS 1-5 行不再被夹到 3',
        "min(5, int(sub.get('max_lines', 2)))" in tts_src
        and 'min(3, int(sub.get' not in tts_src)
-    ck('r29 视频帧字幕真进帧 + 1-5 行固定版式（作用位置可选）',
+    ck('r31b 字幕每行按宽度填满、左对齐、1-5 行框高恒定、只画一层字',
        'shown_chars:shown.length' in html and 'full_chars:cw.text.length' in html
-       and 'const fullLines=subLayoutRows(cw.text,ml)' in html
+       and 'const meas=t=>ctx.measureText(t).width' in html
+       and 'fullLines=subLayoutRows(cw.text,ml,meas,rowLimit)' in html
+       and 'boxLines=ml' in html
+       and "ctx.textAlign='left'" in html
+       and 'global_shown:' in html
+       and 'const per=Math.max(1,Math.ceil(t.length/ml))' not in html
+       and "ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='700 '" not in html
        and 'const n=tw?Math.ceil(cw.text.length*cw.inner):cw.text.length' in html
-       and 'const lines=fullLines.map(' in html
+       and 'const bw=Math.round(maxW*.90)' in html
+       and 'fullLines.forEach((l,i)=>{' in html
+       and "ctx.fillStyle='rgba(190,205,220,.34)'" not in html
        and 'typewriter:tw' in html
        and mf['config']['typewriter'].get('on') is True
-       and "S.typewriter.on=true" in html
-       and 'leadRatio' in html)
+       and "S.typewriter.on=true" in html)
+    ck('r31b SRT/ASS 与页面同源：按宽度填满、左对齐、行数为上限',
+       'def wrap_at(width):' in tts_src
+       and "align = {'bottom': 1, 'center': 4, 'top': 7}" in tts_src
+       and 'chunk_lines(chunk, _ACTIVE_LINES)' in tts_src
+       and 'per = max(1, int(math.ceil(len(s) / ml)))' not in tts_src)
     ck('r23 片尾标题一行不换行（前后端同源）',
        'wrapText(ctx,label,460,2)' not in html and 'while(bigFs>36' in html
        and 'while big > int(52 * u)' in prod and 'lines = [label]' in prod
@@ -950,7 +1006,8 @@ def main():
        and "'sub_text': _sub_text(s, i)" in src
        and "text = s.get('sub_text') or s['text']" in tts_src
        and 'no_title:S.subtitle.no_title!==false' in html
-       and "const sub=$('plSub'),full=subtitleSegments()[i]||'',fullSeg=seg[i]||''" in html)
+       and "const full=subtitleSegments()[i]||'',fullSeg=seg[i]||''" in html
+       and "_dom.className='sublayer off'" in html)
     ck('r25 字幕逐句时长按真实音轨 offsets 差分，不再与估算时长错位',
        'MERGED.offsets.length===seg.length' in html
        and '(i+1<o.length?o[i+1]:(MERGED.dur||0))-x' in html)
@@ -962,7 +1019,7 @@ def main():
        and 'drawCategoryArt(ctx,W,H,c,S.card.category_art' in html
        and "category_art:S.card.category_art||'off'" in html)
     ck('r25 页面有可见构建标记，Ctrl+F5 后可确认线上是否已换包',
-       'r29 · 11-17' in html)
+       'r31 · 11-17' in html and 'r30 · 11-17' not in html)
     ck('r25 分类纹样下移到中下部留白区，前后端同源且不再压标题与摘要',
        'cy=H*.66' in html and 'int(H * 0.66)' in rend
        and 'Math.min(W,H)*.17' in html and 'int(min(W, H) * 0.17)' in rend
@@ -976,11 +1033,32 @@ def main():
        and "slice(0,Math.ceil(String(c.title).length*rv))" not in html
        and "ttl = str(card['title'])" in rend
        and "drawCard($('plCanvas'),cardIdx,true,1)" in html)
-    ck('r27 字幕起始对齐人声：扣掉标题朗读时长（页面 / SRT / ASS 同源）',
-       'leadRatio' in html and 'lead_dur' in tts_src and 'st_sub' in tts_src)
+    ck('r30 字幕起始对齐人声：页面与服务端同一 lead 公式（不再用估算上限）',
+       'window.__subSync' in html and 'leadDur=durs[i]*lead/Math.max(1,_fullLen)' in html
+       and 'leadRatio' not in html
+       and 'lead_dur = s[\'dur\'] * lead / max(1, len(str(full)))' in tts_src
+       and 'st_sub' in tts_src)
     ck('r27 卡片背景图开关：开才画、关纯色（前后端与导出同源）',
        'id="cdArtOn"' in html and "category_art:S.card.category_art||'off'" in html
        and '"category_art": "off"' in open(os.path.join(ROOT, 'video_card_theme.json'), encoding='utf-8').read())
+
+    ck('r31 字幕每行按宽度填满、不再按字数均分居中',
+       'const per=Math.max(1,Math.ceil(t.length/ml))' not in html
+       and "while(out.length<ml)out.push('')" not in html
+       and 'const m=measure||subUnits,lim=+maxW||SUB_LINE_UNITS' in html
+       and "ctx.textAlign='left'" in html
+       and 'row_widths:rowWidths.map(Math.round)' in html
+       and 'fill_rates:rowWidths.map(' in html
+       and 'const rows=splitSubLines(chunk' in html)
+    ck('r31 服务端 SRT/ASS 按显示宽度折行，不再均分 / 不补空行',
+       'SUB_LINE_UNITS = 15' in tts_src
+       and 'per = max(1, int(math.ceil(len(s) / ml)))' not in tts_src
+       and 'while len(out) < ml' not in tts_src
+       and 'def _sub_units(' in tts_src
+       and 'len(cur) >= cap * 0.75' in tts_src)
+    ck('r31 片段不在短标点处过早切断（页面 / 服务端同源）',
+       '/[。！？；]/.test(ch)&&cur.length>=cap*.75' in html
+       and "ch in '。！？；' and len(cur) >= cap * 0.75" in tts_src)
 
     bad = [c for c in CHECKS if not c['ok']]
     print('共 %d 项，失败 %d 项' % (len(CHECKS), len(bad)))
