@@ -664,7 +664,7 @@ def main():
     ck('页面默认值与内嵌 payload 已改今日要闻速览',
        'value="今日要闻速览"' in html and '"title": "今日要闻速览"' in html)
     ck('旧浏览器状态自动迁移，换包刷新不会残留旧品牌名',
-       "const STATE_VER='r35-1'" in html and "\\u6bcf\\u65e5" in html
+       "const STATE_VER='r37-1'" in html and "\\u6bcf\\u65e5" in html
        and "S.cover.title=DEF.cover.title" in html
        and "split(OLD_BRAND).join('今日要闻速览')" in html)
 
@@ -745,7 +745,7 @@ def main():
        "'opening': 'open'" in prod and "'closing': 'close'" in prod
        and 'kind_norm' in prod and 'labels.get(kind_norm' in prod
        and "if kind_norm == 'close'" in prod)
-    ck('旧浏览器状态迁移到 r35-1', "const STATE_VER='r35-1'" in html
+    ck('旧浏览器状态迁移到 r37-1', "const STATE_VER='r37-1'" in html
        and 'itemFont' in html and "if(o.__ver!==STATE_VER)" in html)
 
     ck('stillimage 调优', "'-tune', 'stillimage'" in prod)
@@ -909,7 +909,7 @@ def main():
        "background_style" in prod and "max_lines" in prod and "'navy': '&H8C2A1B0D'" in prod
        and "style == 'custom'" in prod and "bg_alpha" in prod and "letter_spacing" in prod
        and "bg_alpha" in src and "letter_spacing" in src)
-    ck('STATE_VER 升级且旧状态迁移', "const STATE_VER='r35-1'" in html and 'S.shared={theme:' in html
+    ck('STATE_VER 升级且旧状态迁移', "const STATE_VER='r37-1'" in html and 'S.shared={theme:' in html
        and 'S.typewriter.on=true' in html)
     # ---- r23 防回归 ----
     ck('r23 文稿改标题/删除/调序/条数后封面同源重绘',
@@ -1036,7 +1036,7 @@ def main():
        and 'drawCategoryArt(ctx,W,H,c,S.card.category_art' in html
        and "category_art:S.card.category_art||'off'" in html)
     ck('r25 页面有可见构建标记，Ctrl+F5 后可确认线上是否已换包',
-       'r35 · 11-17' in html and 'r34 · 11-17' not in html)
+       'r37 · 11-17' in html and 'r35 · 11-17' not in html)
     ck('r25 分类纹样下移到中下部留白区，前后端同源且不再压标题与摘要',
        'cy=H*.66' in html and 'int(H * 0.66)' in rend
        and 'Math.min(W,H)*.17' in html and 'int(min(W, H) * 0.17)' in rend
@@ -1137,7 +1137,7 @@ def main():
                for s in mf['segments'])
        and '不构成投资' not in str(data.get('close') or '')
        and '不构成投资' not in str(ds.get('closing') or ''))
-    ck('r34 可见标记已升级', 'r35 · 11-17' in html and 'r34 · 11-17' not in html)
+    ck('r34 可见标记已升级', 'r37 · 11-17' in html and 'r35 · 11-17' not in html)
 
     ck('r32 全文不再出现旧品牌名',
        all('\u6bcf\u65e5\u8981\u95fb' not in open(os.path.join(ROOT, f), encoding='utf-8').read() for f in
@@ -1169,7 +1169,24 @@ def main():
                for s in mf['segments'])
        and '仅供参考，不构成' not in str(data.get('close') or '')
        and '仅供参考，不构成' not in str(ds.get('closing') or ''))
-    ck('r35 可见标记已升级', 'r35 · 11-17' in html and 'r34 · 11-17' not in html)
+    ck('r35 可见标记已升级', 'r37 · 11-17' in html and 'r35 · 11-17' not in html)
+    # ---------------- r37 ----------------
+    ck('r37 视频帧 tab 的 cdCanvas 也按人声分段逐字绘制（此前永远画完整卡）',
+       'function frameReveal(pos,dur,lead)' in html
+       and 'function cardPreviewReveal()' in html
+       and "drawCard($('cdCanvas'),S.card.index-1,false,cardPreviewReveal())" in html
+       and 'function startCardPreview(reset)' in html
+       and 'startCardPreview(true)' in html
+       and 'id="cardPvBar"' in html
+       and 'title_shown:Math.min(title.length' in html
+       and 'window.__cardDrawById[canvas.id]' in html
+       and 'function cardLeadDur()' in html
+       and 'S.leadDurs' in html)
+    ck('r37 成品子帧标题段/摘要段分别给足帧且总时长严格对齐音轨',
+       'n_t, n_s = 6, max(8, steps)' in prod
+       and 'pts = [_lead * k / n_t' in prod
+       and 'out.append((p, max(0.01, (ratio - prev) * du)))' in prod
+       and 'du / steps' not in prod)
 
     bad = [c for c in CHECKS if not c['ok']]
     print('共 %d 项，失败 %d 项' % (len(CHECKS), len(bad)))

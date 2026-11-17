@@ -330,19 +330,27 @@ def frames_for(root, manifest, voice, size, tw):
             out.append((p, du))
             continue
         card = next((c for c in manifest['cards'] if c['index'] == s['card']), None) if s['card'] else None
-        for j in range(1, steps + 1):
+        # r34：标题段先逐字出完，摘要段再按剩余时长出；r35 改用真实分段音轨 lead_dur。
+        _full = str(s.get('text') or '')
+        _sub = str(s.get('sub_text') or _full)
+        _legacy_lead = max(0, len(_full) - len(_sub)) / max(1, len(_full))
+        _vseg = vs[i] if i < len(vs) else {}
+        _real_lead = float(_vseg.get('lead_dur') or 0)
+        _lead = min(.92, max(.05, _real_lead / max(.01, du))) if _real_lead > 0 else _legacy_lead
+        _td = max(.05, _lead)
+        _bd = max(.05, 1 - _lead)
+        # r37：8 帧均分时标题段几乎分不到帧（lead≈10% 时第 1 帧标题已全出）。
+        # 标题段给 6 帧、摘要段给 8 帧，每帧时长按真实人声时间差分，总和仍严格等于 du。
+        if card and tw_frame:
+            n_t, n_s = 6, max(8, steps)
+            pts = [_lead * k / n_t for k in range(1, n_t + 1)]
+            pts += [_lead + (1 - _lead) * k / n_s for k in range(1, n_s + 1)]
+        else:
+            pts = [j / steps for j in range(1, steps + 1)]
+        prev = 0.0
+        for ratio in pts:
             seq += 1
             p = os.path.join(outdir, 'f%03d.png' % seq)
-            ratio = j / steps
-            # r34：标题段先逐字出完，摘要段再按剩余时长出；r35 改用真实分段音轨 lead_dur。
-            _full = str(s.get('text') or '')
-            _sub = str(s.get('sub_text') or _full)
-            _legacy_lead = max(0, len(_full) - len(_sub)) / max(1, len(_full))
-            _vseg = vs[i] if i < len(vs) else {}
-            _real_lead = float(_vseg.get('lead_dur') or 0)
-            _lead = min(.92, max(.05, _real_lead / max(.01, du))) if _real_lead > 0 else _legacy_lead
-            _td = max(.05, _lead)
-            _bd = max(.05, 1 - _lead)
             _reveal = {'t': max(0.0, min(1.0, ratio / _td)),
                        's': max(0.0, min(1.0, (ratio - _lead) / _bd))}
             if card:
@@ -352,7 +360,8 @@ def frames_for(root, manifest, voice, size, tw):
             else:
                 simple_frame(root, s['text'], size, p, acc_hex, ratio, theme,
                              s.get('kind', 'window'), _hdr)
-            out.append((p, du / steps))
+            out.append((p, max(0.01, (ratio - prev) * du)))
+            prev = ratio
     return out
 
 
