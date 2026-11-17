@@ -811,8 +811,14 @@ def render_card(root, card, cfg, out_path, meta_path=None, reveal=1.0):
     issue_s = SRC.norm_issue(str(hdr.get('issue') or '第01期'))
     show_t = bool(hdr.get('show_title', True)); show_d = bool(hdr.get('show_date', True))
     show_i = bool(hdr.get('show_issue', True))
-    # r32：视频帧逐字 = 卡片标题/摘要按真实进度逐字显现（frames_for 逐字子帧传 reveal）
-    rv = max(0.0, min(1.0, float(reveal)))
+    # r34：reveal 支持 {'t':标题进度,'s':摘要进度}，按真实人声分段推进；数字仍按旧口径
+    if isinstance(reveal, dict):
+        rv = 1.0
+        rv_t = max(0.0, min(1.0, float(reveal.get('t', 1))))
+        rv_s = max(0.0, min(1.0, float(reveal.get('s', 1))))
+    else:
+        rv = max(0.0, min(1.0, float(reveal)))
+        rv_t = rv_s = rv
     ttl = str(card['title'])
     raw_smy = str(card['summary'])
 
@@ -866,7 +872,7 @@ def render_card(root, card, cfg, out_path, meta_path=None, reveal=1.0):
     truncated = False
     src_gap_v = int((CARD_SRC_GAP_L if land else CARD_SRC_GAP_P) * u)
     src_lh_v = int((34 if land else 40) * u)
-    safe_u = min(int(SUBTITLE_SAFE_U * H / 1920.0),
+    safe_u = 0 if isinstance(reveal, dict) else min(int(SUBTITLE_SAFE_U * H / 1920.0),
                  max(0, H - line2_target - src_gap_v - src_lh_v - int(CARD_SHORT_BOTTOM_PAD * u)))
     max_line2 = H - src_gap_v - src_lh_v - int(CARD_SHORT_BOTTOM_PAD * u) - safe_u
 
@@ -898,12 +904,12 @@ def render_card(root, card, cfg, out_path, meta_path=None, reveal=1.0):
             slines = fill_wrap(d, body_txt, bf, CW, sind)
 
     sy = ty + len(tlines) * tlh + para_gap
-    left_t = int(len(ttl) * rv + 0.9999)
+    left_t = int(len(ttl) * rv_t + 0.9999)
     for i, (ln, off) in enumerate(tlines):
         k = min(len(ln), max(0, left_t)); left_t -= k
         if k: txt(d, (M + off, ty + i * tlh), ln[:k], tf, title_col, True)
     title_end = ty + len(tlines) * tlh
-    left_s = int(len(body_txt) * rv + 0.9999)
+    left_s = int(len(body_txt) * rv_s + 0.9999)
     for i, (ln, off) in enumerate(slines):
         k = min(len(ln), max(0, left_s)); left_s -= k
         if k: txt(d, (M + off, sy + i * blh), ln[:k], bf, sum_col)
@@ -1264,10 +1270,19 @@ def _render_equal_cover(root, payload, cfg, out_path, meta_path, sem):
         for k, ln in enumerate(blocks[i][0]):
             txt(d, (x + tx_off, ty + k * fs * 1.22), ln, f, item_col, item_bold)
 
-    _all_n = len(payload.get('news') or [])
+    # r34：共有 = 当前文稿实际条数；仅展示 = 封面真正画出的条目数
+    _all_news = len(payload.get('news') or [])
     _lim = int(payload.get('news_limit') or 0)
-    _show_n = min(_lim, _all_n) if _lim > 0 else _all_n
-    foot = '本期共有 %d 条资讯，仅展示 %d 条' % (_all_n, _show_n)
+    _tot = min(_lim, _all_news) if _lim > 0 else _all_news
+    _iv = locals().get('items')
+    if isinstance(_iv, (list, tuple)) and _iv:
+        _show_n = len(_iv)
+    else:
+        _sv = locals().get('sem')
+        _show_n = int(_sv.get('count') or 0) if isinstance(_sv, dict) else 0
+        if _show_n <= 0:
+            _show_n = _tot
+    foot = '本期共有 %d 条资讯，仅展示 %d 条' % (_tot, _show_n)
     txt(d, (pad, H - 42 * u), foot, F(22 * u, root, True), co['sub'])
 
     if wm.get('on'):
@@ -1705,10 +1720,19 @@ def render_semantic_cover(root, payload, cfg, out_path, meta_path=None):
         land_fs, land_rh = land_band()
 
     # ------------------------------------------------------------ 页脚
-    _all_n = len(payload.get('news') or [])
+    # r34：共有 = 当前文稿实际条数；仅展示 = 封面真正画出的条目数
+    _all_news = len(payload.get('news') or [])
     _lim = int(payload.get('news_limit') or 0)
-    _show_n = min(_lim, _all_n) if _lim > 0 else _all_n
-    foot = '本期共有 %d 条资讯，仅展示 %d 条' % (_all_n, _show_n)
+    _tot = min(_lim, _all_news) if _lim > 0 else _all_news
+    _iv = locals().get('items')
+    if isinstance(_iv, (list, tuple)) and _iv:
+        _show_n = len(_iv)
+    else:
+        _sv = locals().get('sem')
+        _show_n = int(_sv.get('count') or 0) if isinstance(_sv, dict) else 0
+        if _show_n <= 0:
+            _show_n = _tot
+    foot = '本期共有 %d 条资讯，仅展示 %d 条' % (_tot, _show_n)
     T(pad, H - 42 * u, foot, F(22 * u, root, True), sub, 'footer', bold=True)
 
     if wm.get('on'):

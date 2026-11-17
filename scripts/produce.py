@@ -334,8 +334,16 @@ def frames_for(root, manifest, voice, size, tw):
             seq += 1
             p = os.path.join(outdir, 'f%03d.png' % seq)
             ratio = j / steps
+            # r34：标题段先逐字出完，摘要段再按剩余时长出；与页面 leadDur 公式同源
+            _full = str(s.get('text') or '')
+            _sub = str(s.get('sub_text') or _full)
+            _lead = max(0, len(_full) - len(_sub)) / max(1, len(_full))
+            _td = max(.05, _lead)
+            _bd = max(.05, 1 - _lead)
+            _reveal = {'t': max(0.0, min(1.0, ratio / _td)),
+                       's': max(0.0, min(1.0, (ratio - _lead) / _bd))}
             if card:
-                R.render_card(root, card, cfg, p, reveal=ratio)
+                R.render_card(root, card, cfg, p, reveal=_reveal)
             elif s['kind'] == 'opening' and opening_from_cover(root, size, p, manifest):
                 pass
             else:

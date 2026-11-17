@@ -899,7 +899,8 @@ def main():
        and "'subLines'" in html)
     ck('字幕安全带前后端同源且不压来源',
        'const subSafeU=subtitleSafeU(),subSafe=Math.min(Math.round(subSafeU*H/1920)' in html
-       and 'safe_u = min(int(SUBTITLE_SAFE_U * H / 1920.0)' in rend
+       and ('safe_u = min(int(SUBTITLE_SAFE_U * H / 1920.0)' in rend or
+            'safe_u = 0 if isinstance(reveal, dict) else min(int(SUBTITLE_SAFE_U * H / 1920.0)' in rend)
        and 'srcY=line2+Math.round((land?72:96)*u)+subSafe' in html
        and 'src_y = line2 + int((CARD_SRC_GAP_L if land else CARD_SRC_GAP_P) * u) + safe_u' in rend
        and 'def subtitle_safe_u(cfg)' in rend
@@ -1007,7 +1008,7 @@ def main():
        and 'while big > int(52 * u)' in prod and 'lines = [label]' in prod
        and 'title_lines:1' in html)
     ck('r32 片头片尾不画字幕块（替代 r23 字幕带）',
-       "if(cardIdx!==null){" in html and 'window.__subDraw=null' in html
+       "if(cardIdx!==null && !twFrm){" in html and 'window.__subDraw=null' in html
        and 'window.__cardDrawSubBand=[Math.round(PH*.60),Math.round(PH*.78)]' not in html)
 
 
@@ -1035,7 +1036,7 @@ def main():
        and 'drawCategoryArt(ctx,W,H,c,S.card.category_art' in html
        and "category_art:S.card.category_art||'off'" in html)
     ck('r25 页面有可见构建标记，Ctrl+F5 后可确认线上是否已换包',
-       'r33 · 11-17' in html and 'r32 · 11-17' not in html)
+       'r34 · 11-17' in html and 'r33 · 11-17' not in html)
     ck('r25 分类纹样下移到中下部留白区，前后端同源且不再压标题与摘要',
        'cy=H*.66' in html and 'int(H * 0.66)' in rend
        and 'Math.min(W,H)*.17' in html and 'int(min(W, H) * 0.17)' in rend
@@ -1046,10 +1047,10 @@ def main():
        and "kind:'open',cover:true" in html)
     ck('r32 视频帧逐字作用于卡片内容（替代 r27 旧口径）',
        'const title=String(c.title)' in html and 'const raw=String(c.summary)' in html
-       and 'leftT=Math.ceil(title.length*rv)' in html and 'leftS=Math.ceil(body.length*rv)' in html
+       and 'leftT=Math.ceil(title.length*rvT)' in html and 'leftS=Math.ceil(body.length*rvS)' in html
        and "ttl = str(card['title'])" in rend
        and "drawCard($('plCanvas'),cardIdx,true,rv)" in html
-       and 'rv = max(0.0, min(1.0, float(reveal)))' in rend)
+       and 'rv_t = rv_s = rv' in rend)
     ck('r30 字幕起始对齐人声：页面与服务端同一 lead 公式（不再用估算上限）',
        'window.__subSync' in html and 'leadDur=durs[i]*lead/Math.max(1,_fullLen)' in html
        and 'leadRatio' not in html
@@ -1079,12 +1080,12 @@ def main():
 
     # ---------------- r32 ----------------
     ck('r32 视频帧逐字 = 卡片标题/摘要按 rv 逐字显现（页面 + 服务端 + 子帧传参同源）',
-       "const rv=(typeof reveal==='number'&&isFinite(reveal))" in html
-       and 'leftT=Math.ceil(title.length*rv)' in html
-       and 'leftS=Math.ceil(body.length*rv)' in html
+       "const _rvObj=(reveal&&typeof reveal==='object'" in html
+       and 'leftT=Math.ceil(title.length*rvT)' in html
+       and 'leftS=Math.ceil(body.length*rvS)' in html
        and "drawCard($('plCanvas'),cardIdx,true,rv)" in html
-       and 'rv = max(0.0, min(1.0, float(reveal)))' in rend
-       and 'reveal=ratio' in prod)
+       and 'rv_t = rv_s = rv' in rend
+       and 'reveal=_reveal' in prod)
     ck('r32 字幕轨逐字打字机生效、视频帧模式字幕整片',
        'const tw=!!cfg.typewriter&&cfg.frame===false;' in html
        and "TW.target==='subtitle')" in html
@@ -1096,7 +1097,7 @@ def main():
        and 'Outline=0' in prod and 'Spacing=%d' in prod
        and ",0,0,%d,%d,10,%d,1'" in tts_src)
     ck('r32 片头片尾不画字幕块（替代 r23 字幕带）',
-       "if(cardIdx!==null){" in html and 'window.__subDraw=null' in html
+       "if(cardIdx!==null && !twFrm){" in html and 'window.__subDraw=null' in html
        and "_k in ('open', 'close', 'opening', 'closing', 'window')" in tts_src)
     ck('r33 片尾恢复单个「资讯窗口」框，页面与服务端同源、不与免责/字幕重叠',
        "ctx.fillText('资讯窗口',62,boxY+40)" in html
@@ -1105,11 +1106,39 @@ def main():
        and "'昨日 20:00 — 今日 20:00'" in prod
        and 'window_box' in prod
        and "if kind_norm in ('window', 'close'):" in prod
-       and "if(cardIdx!==null){" in html)
+       and "if(cardIdx!==null && !twFrm){" in html)
     ck('r32 封面底部改为条数说明、去掉 1 / 1',
        "const foot='本期共有 '+_tot+' 条资讯，仅展示 '+_sh+' 条'" in html
        and "'1 / 1'" not in html and "'1 / 1'" not in rend
        and "foot = '本期共有 %d 条资讯，仅展示 %d 条'" in rend)
+    # ---------------- r34 ----------------
+    ck('r34 视频帧逐字模式不画字幕块、不留安全带',
+       'if(cardIdx!==null && !twFrm){' in html
+       and 'window.__subHidden=!!twFrm;' in html
+       and 'if(window.__subHidden)return 0;' in html
+       and 'safe_u = 0 if isinstance(reveal, dict)' in rend)
+    ck('r34 卡片逐字先标题后摘要且与 leadDur 同源',
+       "const _tPlay=Math.max(0,S.playPos||0)" in html
+       and 'const rv=(twFrm&&durs[i]>0)?{t:rvT,s:rvS}:{t:1,s:1};' in html
+       and "_reveal = {'t': max(0.0" in prod
+       and 'rv_t = max(0.0' in rend and 'rv_s = max(0.0' in rend)
+    ck('r34 封面页脚：共有=文稿实际条数，仅展示=封面实际画出条数',
+       'const _tot=P.news.length;' in html
+       and 'const _sh=items.length;' in html and 'const _sh=sem.count;' in html
+       and '_tot = min(_lim, _all_news)' in rend
+       and '_show_n = len(_iv)' in rend
+       and "(typeof __ALL_NEWS!=='undefined'&&__ALL_NEWS.length)||P.news.length" not in html)
+    ck('r34 片尾免责声明只作帧内静态文字，不朗读、不进口播、不进字幕',
+       ".split(DISCLAIMER).join('')" in html
+       and 'disclaimer_read:false' in html
+       and '内容依据公开信息整理' not in open(os.path.join(ROOT, '口播文稿.md'), encoding='utf-8').read()
+       and all('内容依据公开信息整理' not in str(s.get('text') or '') and
+               '内容依据公开信息整理' not in str(s.get('sub_text') or '')
+               for s in mf['segments'])
+       and '不构成投资' not in str(data.get('close') or '')
+       and '不构成投资' not in str(ds.get('closing') or ''))
+    ck('r34 可见标记已升级', 'r34 · 11-17' in html and 'r33 · 11-17' not in html)
+
     ck('r32 全文不再出现旧品牌名',
        all('\u6bcf\u65e5\u8981\u95fb' not in open(os.path.join(ROOT, f), encoding='utf-8').read() for f in
            ('index.html', 'data.js', 'data.json', 'data_source.json',
