@@ -4,7 +4,7 @@
   "voice_mode": "libretts",
   "audio": {
     "path": "media/今日播报.mp3",
-    "duration": 1277.827,
+    "duration": 1277.899,
     "streams": [
       "audio"
     ],
@@ -23,7 +23,7 @@
   "card_overflow": [],
   "versions": {
     "portrait": {
-      "duration": 1277.75,
+      "duration": 1277.867,
       "streams": [
         "video",
         "audio",
@@ -37,7 +37,7 @@
         1080,
         1920
       ],
-      "bytes": 20125709,
+      "bytes": 20150152,
       "path": "media/今日要闻_竖版9比16.mp4"
     }
   },

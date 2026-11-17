@@ -3,11 +3,11 @@
   "version": "1.0",
   "timings": {
     "fetch_s": 0.0,
-    "build_s": 0.015,
-    "render_cover_s": 0.146,
-    "tts_s": 11.014,
-    "mux_s": 137.734,
-    "total_s": 148.918
+    "build_s": 0.007,
+    "render_cover_s": 0.15,
+    "tts_s": 11.636,
+    "mux_s": 142.28,
+    "total_s": 154.082
   },
   "errors": [],
   "data_origin": "inline_payload（data_source.json 内联数据，来自腾讯文档/本地 xlsx）",
@@ -15,7 +15,7 @@
   "voice": {
     "mode": "libretts",
     "real_voice": true,
-    "total_s": 1277.83
+    "total_s": 1277.9
   },
   "video": {
     "ok": true,
@@ -23,7 +23,7 @@
     "voice_mode": "libretts",
     "audio": {
       "path": "media/今日播报.mp3",
-      "duration": 1277.827,
+      "duration": 1277.899,
       "streams": [
         "audio"
       ],
@@ -42,7 +42,7 @@
     "card_overflow": [],
     "versions": {
       "portrait": {
-        "duration": 1277.75,
+        "duration": 1277.867,
         "streams": [
           "video",
           "audio",
@@ -56,7 +56,7 @@
           1080,
           1920
         ],
-        "bytes": 20125709,
+        "bytes": 20150152,
         "path": "media/今日要闻_竖版9比16.mp4"
       }
     },
